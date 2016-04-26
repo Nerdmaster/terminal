@@ -34,9 +34,14 @@ var vt100EscapeCodes = EscapeCodes{
 	Reset: []byte{keyEscape, '[', '0', 'm'},
 }
 
-// Terminal contains the state for running a VT100 terminal that is capable of
-// reading lines of input.
-type Terminal struct {
+// Reader contains the state for running a VT100 terminal that is capable of
+// reading lines of input.  It is similar to the golang crypto/ssh/terminal
+// package except that it doesn't write, leaving that to the caller.  The idea
+// is to store what the user is typing, and where the cursor should be, while
+// letting something else decide what to draw and where on the screen to draw
+// it.  This separation enables more complex applications where there's other
+// real-time data being rendered at the same time as the input line.
+type Reader struct {
 	// AutoCompleteCallback, if non-null, is called for each keypress with
 	// the full input line and the current position of the cursor (in
 	// bytes, as an index into |line|). If it returns ok=false, the key
@@ -94,12 +99,12 @@ type Terminal struct {
 	historyPending string
 }
 
-// NewTerminal runs a VT100 terminal on the given ReadWriter. If the ReadWriter is
+// NewReader runs a VT100 terminal on the given ReadWriter. If the ReadWriter is
 // a local terminal, that terminal must first have been put into raw mode.
 // prompt is a string that is written at the start of each input line (i.e.
 // "> ").
-func NewTerminal(c io.ReadWriter, prompt string) *Terminal {
-	return &Terminal{
+func NewReader(c io.ReadWriter, prompt string) *Reader {
+	return &Reader{
 		Escape:       &vt100EscapeCodes,
 		c:            c,
 		prompt:       []rune(prompt),
@@ -215,7 +220,7 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 }
 
 // queue appends data to the end of t.outBuf
-func (t *Terminal) queue(data []rune) {
+func (t *Reader) queue(data []rune) {
 	t.outBuf = append(t.outBuf, []byte(string(data))...)
 }
 
@@ -229,7 +234,7 @@ func isPrintable(key rune) bool {
 
 // moveCursorToPos appends data to t.outBuf which will move the cursor to the
 // given, logical position in the text.
-func (t *Terminal) moveCursorToPos(pos int) {
+func (t *Reader) moveCursorToPos(pos int) {
 	if !t.echo {
 		return
 	}
@@ -263,7 +268,7 @@ func (t *Terminal) moveCursorToPos(pos int) {
 	t.move(up, down, left, right)
 }
 
-func (t *Terminal) move(up, down, left, right int) {
+func (t *Reader) move(up, down, left, right int) {
 	movement := make([]rune, 3*(up+down+left+right))
 	m := movement
 	for i := 0; i < up; i++ {
@@ -294,14 +299,14 @@ func (t *Terminal) move(up, down, left, right int) {
 	t.queue(movement)
 }
 
-func (t *Terminal) clearLineToRight() {
+func (t *Reader) clearLineToRight() {
 	op := []rune{keyEscape, '[', 'K'}
 	t.queue(op)
 }
 
 const maxLineLength = 4096
 
-func (t *Terminal) setLine(newLine []rune, newPos int) {
+func (t *Reader) setLine(newLine []rune, newPos int) {
 	if t.echo {
 		t.moveCursorToPos(0)
 		t.writeLine(newLine)
@@ -314,7 +319,7 @@ func (t *Terminal) setLine(newLine []rune, newPos int) {
 	t.pos = newPos
 }
 
-func (t *Terminal) advanceCursor(places int) {
+func (t *Reader) advanceCursor(places int) {
 	t.cursorX += places
 	t.cursorY += t.cursorX / t.termWidth
 	if t.cursorY > t.maxLine {
@@ -337,7 +342,7 @@ func (t *Terminal) advanceCursor(places int) {
 	}
 }
 
-func (t *Terminal) eraseNPreviousChars(n int) {
+func (t *Reader) eraseNPreviousChars(n int) {
 	if n == 0 {
 		return
 	}
@@ -362,7 +367,7 @@ func (t *Terminal) eraseNPreviousChars(n int) {
 
 // countToLeftWord returns then number of characters from the cursor to the
 // start of the previous word.
-func (t *Terminal) countToLeftWord() int {
+func (t *Reader) countToLeftWord() int {
 	if t.pos == 0 {
 		return 0
 	}
@@ -387,7 +392,7 @@ func (t *Terminal) countToLeftWord() int {
 
 // countToRightWord returns then number of characters from the cursor to the
 // start of the next word.
-func (t *Terminal) countToRightWord() int {
+func (t *Reader) countToRightWord() int {
 	pos := t.pos
 	for pos < len(t.line) {
 		if t.line[pos] == ' ' {
@@ -427,7 +432,7 @@ func visualLength(runes []rune) int {
 
 // handleKey processes the given key and, optionally, returns a line of text
 // that the user has entered.
-func (t *Terminal) handleKey(key rune) (line string, ok bool) {
+func (t *Reader) handleKey(key rune) (line string, ok bool) {
 	if t.pasteActive && key != keyEnter {
 		t.addKeyToLine(key)
 		return
@@ -564,7 +569,7 @@ func (t *Terminal) handleKey(key rune) (line string, ok bool) {
 
 // addKeyToLine inserts the given key at the current position in the current
 // line.
-func (t *Terminal) addKeyToLine(key rune) {
+func (t *Reader) addKeyToLine(key rune) {
 	if len(t.line) == cap(t.line) {
 		newLine := make([]rune, len(t.line), 2*(1+len(t.line)))
 		copy(newLine, t.line)
@@ -580,7 +585,7 @@ func (t *Terminal) addKeyToLine(key rune) {
 	t.moveCursorToPos(t.pos)
 }
 
-func (t *Terminal) writeLine(line []rune) {
+func (t *Reader) writeLine(line []rune) {
 	for len(line) != 0 {
 		remainingOnLine := t.termWidth - t.cursorX
 		todo := len(line)
@@ -593,7 +598,7 @@ func (t *Terminal) writeLine(line []rune) {
 	}
 }
 
-func (t *Terminal) Write(buf []byte) (n int, err error) {
+func (t *Reader) Write(buf []byte) (n int, err error) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -640,7 +645,7 @@ func (t *Terminal) Write(buf []byte) (n int, err error) {
 
 // ReadPassword temporarily changes the prompt and reads a password, without
 // echo, from the terminal.
-func (t *Terminal) ReadPassword(prompt string) (line string, err error) {
+func (t *Reader) ReadPassword(prompt string) (line string, err error) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -657,14 +662,14 @@ func (t *Terminal) ReadPassword(prompt string) (line string, err error) {
 }
 
 // ReadLine returns a line of input from the terminal.
-func (t *Terminal) ReadLine() (line string, err error) {
+func (t *Reader) ReadLine() (line string, err error) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	return t.readLine()
 }
 
-func (t *Terminal) readLine() (line string, err error) {
+func (t *Reader) readLine() (line string, err error) {
 	// t.lock must be held at this point
 
 	if t.cursorX == 0 && t.cursorY == 0 {
@@ -745,14 +750,14 @@ func (t *Terminal) readLine() (line string, err error) {
 }
 
 // SetPrompt sets the prompt to be used when reading subsequent lines.
-func (t *Terminal) SetPrompt(prompt string) {
+func (t *Reader) SetPrompt(prompt string) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	t.prompt = []rune(prompt)
 }
 
-func (t *Terminal) clearAndRepaintLinePlusNPrevious(numPrevLines int) {
+func (t *Reader) clearAndRepaintLinePlusNPrevious(numPrevLines int) {
 	// Move cursor to column zero at the start of the line.
 	t.move(t.cursorY, 0, t.cursorX, 0)
 	t.cursorX, t.cursorY = 0, 0
@@ -773,7 +778,7 @@ func (t *Terminal) clearAndRepaintLinePlusNPrevious(numPrevLines int) {
 	t.moveCursorToPos(t.pos)
 }
 
-func (t *Terminal) SetSize(width, height int) error {
+func (t *Reader) SetSize(width, height int) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -843,7 +848,7 @@ var ErrPasteIndicator = pasteIndicatorError{}
 // enabling this mode will stop any autocomplete callback from running due to
 // pastes. Additionally, any lines that are completely pasted will be returned
 // from ReadLine with the error set to ErrPasteIndicator.
-func (t *Terminal) SetBracketedPasteMode(on bool) {
+func (t *Reader) SetBracketedPasteMode(on bool) {
 	if on {
 		io.WriteString(t.c, "\x1b[?2004h")
 	} else {

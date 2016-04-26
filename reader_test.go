@@ -10,13 +10,13 @@ import (
 	"testing"
 )
 
-type MockTerminal struct {
+type MockReader struct {
 	toSend       []byte
 	bytesPerRead int
 	received     []byte
 }
 
-func (c *MockTerminal) Read(data []byte) (n int, err error) {
+func (c *MockReader) Read(data []byte) (n int, err error) {
 	n = len(data)
 	if n == 0 {
 		return
@@ -35,14 +35,14 @@ func (c *MockTerminal) Read(data []byte) (n int, err error) {
 	return
 }
 
-func (c *MockTerminal) Write(data []byte) (n int, err error) {
+func (c *MockReader) Write(data []byte) (n int, err error) {
 	c.received = append(c.received, data...)
 	return len(data), nil
 }
 
 func TestClose(t *testing.T) {
-	c := &MockTerminal{}
-	ss := NewTerminal(c, "> ")
+	c := &MockReader{}
+	ss := NewReader(c, "> ")
 	line, err := ss.ReadLine()
 	if line != "" {
 		t.Errorf("Expected empty line but got: %s", line)
@@ -203,11 +203,11 @@ var keyPressTests = []struct {
 func TestKeyPresses(t *testing.T) {
 	for i, test := range keyPressTests {
 		for j := 1; j < len(test.in); j++ {
-			c := &MockTerminal{
+			c := &MockReader{
 				toSend:       []byte(test.in),
 				bytesPerRead: j,
 			}
-			ss := NewTerminal(c, "> ")
+			ss := NewReader(c, "> ")
 			for k := 0; k < test.throwAwayLines; k++ {
 				_, err := ss.ReadLine()
 				if err != nil {
@@ -228,11 +228,11 @@ func TestKeyPresses(t *testing.T) {
 }
 
 func TestPasswordNotSaved(t *testing.T) {
-	c := &MockTerminal{
+	c := &MockReader{
 		toSend:       []byte("password\r\x1b[A\r"),
 		bytesPerRead: 1,
 	}
-	ss := NewTerminal(c, "> ")
+	ss := NewReader(c, "> ")
 	pw, _ := ss.ReadPassword("> ")
 	if pw != "password" {
 		t.Fatalf("failed to read password, got %s", pw)
@@ -251,13 +251,13 @@ var setSizeTests = []struct {
 	{132, 43},
 }
 
-func TestTerminalSetSize(t *testing.T) {
+func TestReaderSetSize(t *testing.T) {
 	for _, setSize := range setSizeTests {
-		c := &MockTerminal{
+		c := &MockReader{
 			toSend:       []byte("password\r\x1b[A\r"),
 			bytesPerRead: 1,
 		}
-		ss := NewTerminal(c, "> ")
+		ss := NewReader(c, "> ")
 		ss.SetSize(setSize.width, setSize.height)
 		pw, _ := ss.ReadPassword("Password: ")
 		if pw != "password" {
