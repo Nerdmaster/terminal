@@ -42,7 +42,7 @@ func (c *MockReader) Write(data []byte) (n int, err error) {
 
 func TestClose(t *testing.T) {
 	c := &MockReader{}
-	ss := NewReader(c, "> ")
+	ss := NewReader(c)
 	line, err := ss.ReadLine()
 	if line != "" {
 		t.Errorf("Expected empty line but got: %s", line)
@@ -207,7 +207,7 @@ func TestKeyPresses(t *testing.T) {
 				toSend:       []byte(test.in),
 				bytesPerRead: j,
 			}
-			ss := NewReader(c, "> ")
+			ss := NewReader(c)
 			for k := 0; k < test.throwAwayLines; k++ {
 				_, err := ss.ReadLine()
 				if err != nil {
@@ -232,14 +232,14 @@ func TestPasswordNotSaved(t *testing.T) {
 		toSend:       []byte("password\r\x1b[A\r"),
 		bytesPerRead: 1,
 	}
-	ss := NewReader(c, "> ")
-	pw, _ := ss.ReadPassword("> ")
+	ss := NewReader(c)
+	pw, _ := ss.ReadPassword()
 	if pw != "password" {
 		t.Fatalf("failed to read password, got %s", pw)
 	}
 	line, _ := ss.ReadLine()
 	if len(line) > 0 {
-		t.Fatalf("password was saved in history")
+		t.Fatalf("password %s was saved in history", line)
 	}
 }
 
@@ -257,14 +257,11 @@ func TestReaderSetSize(t *testing.T) {
 			toSend:       []byte("password\r\x1b[A\r"),
 			bytesPerRead: 1,
 		}
-		ss := NewReader(c, "> ")
+		ss := NewReader(c)
 		ss.SetSize(setSize.width, setSize.height)
-		pw, _ := ss.ReadPassword("Password: ")
+		pw, _ := ss.ReadPassword()
 		if pw != "password" {
 			t.Fatalf("failed to read password, got %s", pw)
-		}
-		if string(c.received) != "Password: \r\n" {
-			t.Errorf("failed to set the temporary prompt expected %q, got %q", "Password: ", c.received)
 		}
 	}
 }
