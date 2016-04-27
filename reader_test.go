@@ -255,6 +255,19 @@ func TestReaderPassword(t *testing.T) {
 	}
 }
 
+func TestMaxLength(t *testing.T) {
+	c := &MockReader{
+		toSend:       []byte("this is too long blargh\r"),
+		bytesPerRead: 1,
+	}
+	ss := NewReader(c)
+	ss.MaxLineLength = 8
+	line, _ := ss.ReadLine()
+	if line != "this is " {
+		t.Fatalf("failed to limit length, got '%s'", line)
+	}
+}
+
 func TestMakeRawState(t *testing.T) {
 	fd := int(os.Stdout.Fd())
 	if !IsTerminal(fd) {

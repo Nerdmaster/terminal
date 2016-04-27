@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 )
 
+const DefaultMaxLineLength = 4096
 
 // Reader contains the state for running a VT100 terminal that is capable of
 // reading lines of input.  It is similar to the golang crypto/ssh/terminal
@@ -32,6 +33,9 @@ type Reader struct {
 	// password is being entered
 	NoHistory bool
 
+	// MaxLineLength tells us when to stop accepting input (other than things
+	// like allowing up/down/left/right and other control keys)
+	MaxLineLength int
 
 	// line is the current line being entered.
 	line []rune
@@ -63,6 +67,7 @@ type Reader struct {
 func NewReader(c io.Reader) *Reader {
 	return &Reader{
 		c:             c,
+		MaxLineLength: DefaultMaxLineLength,
 		historyIndex:  -1,
 	}
 }
@@ -175,8 +180,6 @@ func isPrintable(key rune) bool {
 	isInSurrogateArea := key >= 0xd800 && key <= 0xdbff
 	return key >= 32 && !isInSurrogateArea
 }
-
-const maxLineLength = 4096
 
 func (t *Reader) setLine(newLine []rune, newPos int) {
 	t.line = newLine
@@ -355,7 +358,7 @@ func (t *Reader) handleKey(key rune) (line string, ok bool) {
 		if !isPrintable(key) {
 			return
 		}
-		if len(t.line) == maxLineLength {
+		if len(t.line) == t.MaxLineLength {
 			return
 		}
 		t.addKeyToLine(key)
