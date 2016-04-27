@@ -41,8 +41,6 @@ type Reader struct {
 	// progress.
 	pasteActive bool
 
-	termWidth, termHeight int
-
 	// remainder contains the remainder of any partial key sequences after
 	// a read. It aliases into inBuf.
 	remainder []byte
@@ -65,8 +63,6 @@ type Reader struct {
 func NewReader(c io.Reader) *Reader {
 	return &Reader{
 		c:             c,
-		termWidth:     80,
-		termHeight:    24,
 		historyIndex:  -1,
 	}
 }
@@ -458,14 +454,6 @@ func (t *Reader) ReadLine() (line string, err error) {
 	}
 
 	panic("unreachable") // for Go 1.0.
-}
-
-func (t *Reader) SetSize(width, height int) {
-	if width == 0 {
-		width = 1
-	}
-
-	t.termWidth, t.termHeight = width, height
 }
 
 type pasteIndicatorError struct{}

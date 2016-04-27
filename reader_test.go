@@ -243,26 +243,15 @@ func TestPasswordNotSaved(t *testing.T) {
 	}
 }
 
-var setSizeTests = []struct {
-	width, height int
-}{
-	{40, 13},
-	{80, 24},
-	{132, 43},
-}
-
-func TestReaderSetSize(t *testing.T) {
-	for _, setSize := range setSizeTests {
-		c := &MockReader{
-			toSend:       []byte("password\r\x1b[A\r"),
-			bytesPerRead: 1,
-		}
-		ss := NewReader(c)
-		ss.SetSize(setSize.width, setSize.height)
-		pw, _ := ss.ReadPassword()
-		if pw != "password" {
-			t.Fatalf("failed to read password, got %s", pw)
-		}
+func TestReaderPassword(t *testing.T) {
+	c := &MockReader{
+		toSend:       []byte("password\r\x1b[A\r"),
+		bytesPerRead: 1,
+	}
+	ss := NewReader(c)
+	pw, _ := ss.ReadPassword()
+	if pw != "password" {
+		t.Fatalf("failed to read password, got %s", pw)
 	}
 }
 
