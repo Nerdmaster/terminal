@@ -264,10 +264,6 @@ func (t *Reader) ReadPassword() (line string, err error) {
 
 // ReadLine returns a line of input from the terminal.
 func (t *Reader) ReadLine() (line string, err error) {
-	t.m.RLock()
-	lineLen := len(t.input.Line)
-	t.m.RUnlock()
-
 	lineIsPasted := t.pasteActive
 
 	for {
@@ -279,6 +275,11 @@ func (t *Reader) ReadLine() (line string, err error) {
 			if key == utf8.RuneError {
 				break
 			}
+
+			t.m.RLock()
+			lineLen := len(t.input.Line)
+			t.m.RUnlock()
+
 			if !t.pasteActive {
 				if key == keyCtrlD {
 					if lineLen == 0 {
