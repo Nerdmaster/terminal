@@ -7,6 +7,7 @@ package terminal
 import (
 	"bytes"
 	"io"
+	"sync"
 	"unicode/utf8"
 )
 
@@ -28,6 +29,7 @@ type Reader struct {
 	AutoCompleteCallback func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
 
 	c io.Reader
+	m sync.RWMutex
 
 	// NoHistory is on when we don't want to preserve history, such as when a
 	// password is being entered
@@ -37,10 +39,9 @@ type Reader struct {
 	// like allowing up/down/left/right and other control keys)
 	MaxLineLength int
 
-	// line is the current line being entered.
-	line []rune
-	// pos is the logical position of the cursor in line
-	pos int
+	// input is the current line being entered, and the cursor position
+	input *Input
+
 	// pasteActive is true iff there is a bracketed paste operation in
 	// progress.
 	pasteActive bool
@@ -69,6 +70,7 @@ func NewReader(c io.Reader) *Reader {
 		c:             c,
 		MaxLineLength: DefaultMaxLineLength,
 		historyIndex:  -1,
+		input:         &Input{},
 	}
 }
 
@@ -181,203 +183,74 @@ func isPrintable(key rune) bool {
 	return key >= 32 && !isInSurrogateArea
 }
 
-func (t *Reader) setLine(newLine []rune, newPos int) {
-	t.line = newLine
-	t.pos = newPos
-}
-
-func (t *Reader) eraseNPreviousChars(n int) {
-	if n == 0 {
-		return
-	}
-
-	if t.pos < n {
-		n = t.pos
-	}
-	t.pos -= n
-
-	copy(t.line[t.pos:], t.line[n+t.pos:])
-	t.line = t.line[:len(t.line)-n]
-}
-
-// countToLeftWord returns then number of characters from the cursor to the
-// start of the previous word.
-func (t *Reader) countToLeftWord() int {
-	if t.pos == 0 {
-		return 0
-	}
-
-	pos := t.pos - 1
-	for pos > 0 {
-		if t.line[pos] != ' ' {
-			break
-		}
-		pos--
-	}
-	for pos > 0 {
-		if t.line[pos] == ' ' {
-			pos++
-			break
-		}
-		pos--
-	}
-
-	return t.pos - pos
-}
-
-// countToRightWord returns then number of characters from the cursor to the
-// start of the next word.
-func (t *Reader) countToRightWord() int {
-	pos := t.pos
-	for pos < len(t.line) {
-		if t.line[pos] == ' ' {
-			break
-		}
-		pos++
-	}
-	for pos < len(t.line) {
-		if t.line[pos] != ' ' {
-			break
-		}
-		pos++
-	}
-	return pos - t.pos
-}
-
 // handleKey processes the given key and, optionally, returns a line of text
 // that the user has entered.
 func (t *Reader) handleKey(key rune) (line string, ok bool) {
+	t.m.Lock()
+	defer t.m.Unlock()
+
+	i := t.input
 	if t.pasteActive && key != keyEnter {
-		t.addKeyToLine(key)
+		i.AddKeyToLine(key)
 		return
 	}
 
 	switch key {
 	case keyBackspace:
-		if t.pos == 0 {
-			return
-		}
-		t.eraseNPreviousChars(1)
+		i.EraseNPreviousChars(1)
 	case keyAltLeft:
-		// move left by a word.
-		t.pos -= t.countToLeftWord()
+		i.MoveToLeftWord()
 	case keyAltRight:
-		// move right by a word.
-		t.pos += t.countToRightWord()
+		i.MoveToRightWord()
 	case keyLeft:
-		if t.pos == 0 {
-			return
-		}
-		t.pos--
+		i.MoveLeft()
 	case keyRight:
-		if t.pos == len(t.line) {
-			return
-		}
-		t.pos++
+		i.MoveRight()
 	case keyHome:
-		if t.pos == 0 {
-			return
-		}
-		t.pos = 0
+		i.MoveHome()
 	case keyEnd:
-		if t.pos == len(t.line) {
-			return
-		}
-		t.pos = len(t.line)
+		i.MoveEnd()
 	case keyUp:
-		if t.NoHistory {
-			return
-		}
-
-		entry, ok := t.history.NthPreviousEntry(t.historyIndex + 1)
+		ok := t.fetchPreviousHistory()
 		if !ok {
 			return "", false
 		}
-		if t.historyIndex == -1 {
-			t.historyPending = string(t.line)
-		}
-		t.historyIndex++
-		runes := []rune(entry)
-		t.setLine(runes, len(runes))
 	case keyDown:
-		if t.NoHistory {
-			return
-		}
-
-		switch t.historyIndex {
-		case -1:
-			return
-		case 0:
-			runes := []rune(t.historyPending)
-			t.setLine(runes, len(runes))
-			t.historyIndex--
-		default:
-			entry, ok := t.history.NthPreviousEntry(t.historyIndex - 1)
-			if ok {
-				t.historyIndex--
-				runes := []rune(entry)
-				t.setLine(runes, len(runes))
-			}
-		}
+		t.fetchNextHistory()
 	case keyEnter:
-		line = string(t.line)
+		line = i.String()
 		ok = true
-		t.line = t.line[:0]
-		t.pos = 0
+		i.Clear()
 	case keyDeleteWord:
-		// Delete zero or more spaces and then one or more characters.
-		t.eraseNPreviousChars(t.countToLeftWord())
+		i.EraseNPreviousChars(i.CountToLeftWord())
 	case keyDeleteLine:
-		// Delete everything from the current cursor position to the
-		// end of line.
-		t.line = t.line[:t.pos]
+		i.DeleteLine()
 	case keyCtrlD:
-		// Erase the character under the current position.
-		// The EOF case when the line is empty is handled in
-		// readLine().
-		if t.pos < len(t.line) {
-			t.pos++
-			t.eraseNPreviousChars(1)
-		}
+		// (The EOF case is handled in ReadLine)
+		i.DeleteRuneUnderCursor()
 	case keyCtrlU:
-		t.eraseNPreviousChars(t.pos)
+		i.DeleteToBeginningOfLine()
 	case keyClearScreen:
 		// TODO: implement a callback for this
 	default:
 		if t.AutoCompleteCallback != nil {
-			prefix := string(t.line[:t.pos])
-			suffix := string(t.line[t.pos:])
-
+			prefix, suffix := i.Split()
 			newLine, newPos, completeOk := t.AutoCompleteCallback(prefix+suffix, len(prefix), key)
 
 			if completeOk {
-				t.setLine([]rune(newLine), utf8.RuneCount([]byte(newLine)[:newPos]))
+				i.Set([]rune(newLine), utf8.RuneCount([]byte(newLine)[:newPos]))
 				return
 			}
 		}
 		if !isPrintable(key) {
 			return
 		}
-		if len(t.line) == t.MaxLineLength {
+		if len(i.Line) == t.MaxLineLength {
 			return
 		}
-		t.addKeyToLine(key)
+		i.AddKeyToLine(key)
 	}
 	return
-}
-
-// addKeyToLine inserts the given key at the current position in the current
-// line.
-func (t *Reader) addKeyToLine(key rune) {
-	if len(t.line) == cap(t.line) {
-		newLine := make([]rune, len(t.line), 2*(1+len(t.line)))
-		copy(newLine, t.line)
-		t.line = newLine
-	}
-	t.line = t.line[:len(t.line)+1]
-	copy(t.line[t.pos+1:], t.line[t.pos:])
-	t.line[t.pos] = key
-	t.pos++
 }
 
 // ReadPassword temporarily reads a password without saving to history
@@ -391,6 +264,10 @@ func (t *Reader) ReadPassword() (line string, err error) {
 
 // ReadLine returns a line of input from the terminal.
 func (t *Reader) ReadLine() (line string, err error) {
+	t.m.RLock()
+	lineLen := len(t.input.Line)
+	t.m.RUnlock()
+
 	lineIsPasted := t.pasteActive
 
 	for {
@@ -404,13 +281,13 @@ func (t *Reader) ReadLine() (line string, err error) {
 			}
 			if !t.pasteActive {
 				if key == keyCtrlD {
-					if len(t.line) == 0 {
+					if lineLen == 0 {
 						return "", io.EOF
 					}
 				}
 				if key == keyPasteStart {
 					t.pasteActive = true
-					if len(t.line) == 0 {
+					if lineLen == 0 {
 						lineIsPasted = true
 					}
 					continue
@@ -457,6 +334,57 @@ func (t *Reader) ReadLine() (line string, err error) {
 	}
 
 	panic("unreachable") // for Go 1.0.
+}
+
+// LinePos returns the current input line and cursor position
+func (t *Reader) LinePos() (string, int) {
+	t.m.RLock()
+	defer t.m.RUnlock()
+	return t.input.String(), t.input.Pos
+}
+
+// fetchPreviousHistory sets the input line to the previous entry in our history
+func (t *Reader) fetchPreviousHistory() bool {
+	// lock has to be held here
+	if t.NoHistory {
+		return false
+	}
+
+	entry, ok := t.history.NthPreviousEntry(t.historyIndex + 1)
+	if !ok {
+		return false
+	}
+	if t.historyIndex == -1 {
+		t.historyPending = string(t.input.Line)
+	}
+	t.historyIndex++
+	runes := []rune(entry)
+	t.input.Set(runes, len(runes))
+	return true
+}
+
+// fetchNextHistory sets the input line to the next entry in our history
+func (t *Reader) fetchNextHistory() {
+	// lock has to be held here
+	if t.NoHistory {
+		return
+	}
+
+	switch t.historyIndex {
+	case -1:
+		return
+	case 0:
+		runes := []rune(t.historyPending)
+		t.input.Set(runes, len(runes))
+		t.historyIndex--
+	default:
+		entry, ok := t.history.NthPreviousEntry(t.historyIndex - 1)
+		if ok {
+			t.historyIndex--
+			runes := []rune(entry)
+			t.input.Set(runes, len(runes))
+		}
+	}
 }
 
 type pasteIndicatorError struct{}
