@@ -186,12 +186,12 @@ func isPrintable(key rune) bool {
 
 // handleKey processes the given key and, optionally, returns a line of text
 // that the user has entered.
-func (t *Reader) handleKey(key rune) (line string, ok bool) {
-	t.m.Lock()
-	defer t.m.Unlock()
+func (r *Reader) handleKey(key rune) (line string, ok bool) {
+	r.m.Lock()
+	defer r.m.Unlock()
 
-	i := t.input
-	if t.pasteActive && key != keyEnter {
+	i := r.input
+	if r.pasteActive && key != keyEnter {
 		i.AddKeyToLine(key)
 		return
 	}
@@ -212,12 +212,12 @@ func (t *Reader) handleKey(key rune) (line string, ok bool) {
 	case keyEnd:
 		i.MoveEnd()
 	case keyUp:
-		ok := t.fetchPreviousHistory()
+		ok := r.fetchPreviousHistory()
 		if !ok {
 			return "", false
 		}
 	case keyDown:
-		t.fetchNextHistory()
+		r.fetchNextHistory()
 	case keyEnter:
 		line = i.String()
 		ok = true
@@ -234,9 +234,9 @@ func (t *Reader) handleKey(key rune) (line string, ok bool) {
 	case keyClearScreen:
 		// TODO: implement a callback for this
 	default:
-		if t.AutoCompleteCallback != nil {
+		if r.AutoCompleteCallback != nil {
 			prefix, suffix := i.Split()
-			newLine, newPos, completeOk := t.AutoCompleteCallback(prefix+suffix, len(prefix), key)
+			newLine, newPos, completeOk := r.AutoCompleteCallback(prefix+suffix, len(prefix), key)
 
 			if completeOk {
 				i.Set([]rune(newLine), utf8.RuneCount([]byte(newLine)[:newPos]))
@@ -246,7 +246,7 @@ func (t *Reader) handleKey(key rune) (line string, ok bool) {
 		if !isPrintable(key) {
 			return
 		}
-		if len(i.Line) == t.MaxLineLength {
+		if len(i.Line) == r.MaxLineLength {
 			return
 		}
 		i.AddKeyToLine(key)
@@ -255,65 +255,65 @@ func (t *Reader) handleKey(key rune) (line string, ok bool) {
 }
 
 // ReadPassword temporarily reads a password without saving to history
-func (t *Reader) ReadPassword() (line string, err error) {
-	oldNoHistory := t.NoHistory
-	t.NoHistory = true
-	line, err = t.ReadLine()
-	t.NoHistory = oldNoHistory
+func (r *Reader) ReadPassword() (line string, err error) {
+	oldNoHistory := r.NoHistory
+	r.NoHistory = true
+	line, err = r.ReadLine()
+	r.NoHistory = oldNoHistory
 	return
 }
 
 // ReadLine returns a line of input from the terminal.
-func (t *Reader) ReadLine() (line string, err error) {
-	lineIsPasted := t.pasteActive
+func (r *Reader) ReadLine() (line string, err error) {
+	lineIsPasted := r.pasteActive
 
 	for {
-		rest := t.remainder
+		rest := r.remainder
 		lineOk := false
 		for !lineOk {
 			var key rune
-			key, rest = bytesToKey(rest, t.pasteActive)
+			key, rest = bytesToKey(rest, r.pasteActive)
 			if key == utf8.RuneError {
 				break
 			}
 
-			t.m.RLock()
-			lineLen := len(t.input.Line)
-			t.m.RUnlock()
+			r.m.RLock()
+			lineLen := len(r.input.Line)
+			r.m.RUnlock()
 
-			if !t.pasteActive {
+			if !r.pasteActive {
 				if key == keyCtrlD {
 					if lineLen == 0 {
 						return "", io.EOF
 					}
 				}
 				if key == keyPasteStart {
-					t.pasteActive = true
+					r.pasteActive = true
 					if lineLen == 0 {
 						lineIsPasted = true
 					}
 					continue
 				}
 			} else if key == keyPasteEnd {
-				t.pasteActive = false
+				r.pasteActive = false
 				continue
 			}
-			if !t.pasteActive {
+			if !r.pasteActive {
 				lineIsPasted = false
 			}
-			line, lineOk = t.handleKey(key)
+			line, lineOk = r.handleKey(key)
 		}
 		if len(rest) > 0 {
-			n := copy(t.inBuf[:], rest)
-			t.remainder = t.inBuf[:n]
+			n := copy(r.inBuf[:], rest)
+			r.remainder = r.inBuf[:n]
 		} else {
-			t.remainder = nil
+			r.remainder = nil
 		}
 
 		if lineOk {
-			if !t.NoHistory {
-				t.historyIndex = -1
-				t.history.Add(line)
+			if !r.NoHistory {
+				r.historyIndex = -1
+				r.history.Add(line)
 			}
 			if lineIsPasted {
 				err = ErrPasteIndicator
@@ -321,70 +321,70 @@ func (t *Reader) ReadLine() (line string, err error) {
 			return
 		}
 
-		// t.remainder is a slice at the beginning of t.inBuf
+		// r.remainder is a slice at the beginning of r.inBuf
 		// containing a partial key sequence
-		readBuf := t.inBuf[len(t.remainder):]
+		readBuf := r.inBuf[len(r.remainder):]
 		var n int
 
-		n, err = t.c.Read(readBuf)
+		n, err = r.c.Read(readBuf)
 
 		if err != nil {
 			return
 		}
 
-		t.remainder = t.inBuf[:n+len(t.remainder)]
+		r.remainder = r.inBuf[:n+len(r.remainder)]
 	}
 
 	panic("unreachable") // for Go 1.0.
 }
 
 // LinePos returns the current input line and cursor position
-func (t *Reader) LinePos() (string, int) {
-	t.m.RLock()
-	defer t.m.RUnlock()
-	return t.input.String(), t.input.Pos
+func (r *Reader) LinePos() (string, int) {
+	r.m.RLock()
+	defer r.m.RUnlock()
+	return r.input.String(), r.input.Pos
 }
 
 // fetchPreviousHistory sets the input line to the previous entry in our history
-func (t *Reader) fetchPreviousHistory() bool {
+func (r *Reader) fetchPreviousHistory() bool {
 	// lock has to be held here
-	if t.NoHistory {
+	if r.NoHistory {
 		return false
 	}
 
-	entry, ok := t.history.NthPreviousEntry(t.historyIndex + 1)
+	entry, ok := r.history.NthPreviousEntry(r.historyIndex + 1)
 	if !ok {
 		return false
 	}
-	if t.historyIndex == -1 {
-		t.historyPending = string(t.input.Line)
+	if r.historyIndex == -1 {
+		r.historyPending = string(r.input.Line)
 	}
-	t.historyIndex++
+	r.historyIndex++
 	runes := []rune(entry)
-	t.input.Set(runes, len(runes))
+	r.input.Set(runes, len(runes))
 	return true
 }
 
 // fetchNextHistory sets the input line to the next entry in our history
-func (t *Reader) fetchNextHistory() {
+func (r *Reader) fetchNextHistory() {
 	// lock has to be held here
-	if t.NoHistory {
+	if r.NoHistory {
 		return
 	}
 
-	switch t.historyIndex {
+	switch r.historyIndex {
 	case -1:
 		return
 	case 0:
-		runes := []rune(t.historyPending)
-		t.input.Set(runes, len(runes))
-		t.historyIndex--
+		runes := []rune(r.historyPending)
+		r.input.Set(runes, len(runes))
+		r.historyIndex--
 	default:
-		entry, ok := t.history.NthPreviousEntry(t.historyIndex - 1)
+		entry, ok := r.history.NthPreviousEntry(r.historyIndex - 1)
 		if ok {
-			t.historyIndex--
+			r.historyIndex--
 			runes := []rune(entry)
-			t.input.Set(runes, len(runes))
+			r.input.Set(runes, len(runes))
 		}
 	}
 }
