@@ -44,7 +44,7 @@ func setupNoise() {
 	for y := range noise {
 		noise[y] = make([]rune, 100)
 		for x := range noise[y] {
-			if y == 3 && x > 10 && x < 90 {
+			if y == 3 && x > 9 && x < 90 {
 				noise[y][x] = ' '
 			} else {
 				noise[y][x] = randomRune()
@@ -105,7 +105,7 @@ func printOutput() {
 		// Print any changes to noise since last tick
 		for y := 0; y < 10; y++ {
 			for x := 0; x < 100; x++ {
-				if y == 3 && x > 10 && x < 90 {
+				if y == 3 && x > 9 && x < 90 {
 					nextNoise[y][x] = noise[y][x]
 				}
 				if noise[y][x] != nextNoise[y][x] {
