@@ -68,6 +68,34 @@ func (p *Prompter) WriteChanges() {
 	}
 }
 
+// WriteChangesNoCursor prints prompt and line if necessary, but doesn't
+// reposition the cursor in order to allow a frequently-updating app to write
+// the cursor change where it makes sense, regardless of changes to the user's
+// input.
+func (p *Prompter) WriteChangesNoCursor() {
+	line, pos := p.LinePos()
+	p.pos = pos
+
+	if !p.prompted {
+		p.PrintPrompt()
+		p.prompted = true
+	}
+
+	if p.line != line {
+		prevLine := p.line
+		p.line = line
+		p.PrintLine()
+
+		lpl := len(prevLine)
+		ll := len(line)
+		bigger := lpl - ll
+		if bigger > 0 {
+			fmt.Fprintf(p.Out, strings.Repeat(" ", bigger))
+			p.pos += bigger
+		}
+	}
+}
+
 func (p *Prompter) printAt(x, y int, s string) {
 	fmt.Fprintf(p.Out, "\x1b[%d;%dH%s", y, x, s)
 }

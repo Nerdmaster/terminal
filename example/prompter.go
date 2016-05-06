@@ -114,10 +114,9 @@ func printOutput() {
 				}
 			}
 		}
-		p.PrintCursorMovement()
-
 		// Print any changes to user input since last tick
-		p.WriteChanges()
+		p.WriteChangesNoCursor()
+		p.PrintCursorMovement()
 
 		time.Sleep(time.Millisecond * 50)
 	}
