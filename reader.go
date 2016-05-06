@@ -1,4 +1,5 @@
-// Copyright 2011 The Go Authors. All rights reserved.
+// Portions Copyright 2011- The Go Authors. All rights reserved.
+// Portions Copyright 2016- Jeremy Echols. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
