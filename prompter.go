@@ -54,6 +54,13 @@ func (p *Prompter) ReadLine() (string, error) {
 	return line, err
 }
 
+// SetPrompt changes the current prompt.  This shouldn't be called while a
+// ReadLine is in progress.
+func (p *Prompter) SetPrompt(s string) {
+	p.prompt = s
+	p.inputX = p.x + visualLength(p.prompt)
+}
+
 // SetLocation changes the internal x and y coordinates.  If this is called
 // while a ReadLine is in progress, you won't be happy.
 func (p *Prompter) SetLocation(x, y int) {
