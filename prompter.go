@@ -135,10 +135,12 @@ func (p *Prompter) PrintPrompt() {
 }
 
 func (p *Prompter) PrintLine() {
+	p.line, _ = p.LinePos()
 	p.printAt(p.inputX, p.y, p.line)
 	p.pos = len(p.line)
 }
 
 func (p *Prompter) PrintCursorMovement() {
+	p.pos = p.Pos()
 	p.printAt(p.inputX+p.pos, p.y, "")
 }

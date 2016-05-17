@@ -345,6 +345,13 @@ func (r *Reader) LinePos() (string, int) {
 	return r.input.String(), r.input.Pos
 }
 
+// Pos returns the position of the cursor
+func (r *Reader) Pos() int {
+	r.m.RLock()
+	defer r.m.RUnlock()
+	return r.input.Pos
+}
+
 // fetchPreviousHistory sets the input line to the previous entry in our history
 func (r *Reader) fetchPreviousHistory() bool {
 	// lock has to be held here
