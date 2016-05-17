@@ -76,6 +76,31 @@ func (p *Prompter) NeedWrite() bool {
 	return line != p.line || pos != p.pos
 }
 
+// WriteAll forces a write of the entire prompt
+func (p *Prompter) WriteAll() {
+	line, pos := p.LinePos()
+
+	p.printAt(p.x, p.y, p.prompt + p.line)
+	p.pos = len(p.line)
+
+	if p.line != line {
+		prevLine := p.line
+
+		lpl := len(prevLine)
+		ll := len(line)
+		bigger := lpl - ll
+		if bigger > 0 {
+			fmt.Fprintf(p.Out, strings.Repeat(" ", bigger))
+			p.pos += bigger
+		}
+	}
+
+	if p.pos != pos {
+		p.pos = pos
+		p.PrintCursorMovement()
+	}
+}
+
 func (p *Prompter) WriteChanges() {
 	line, pos := p.LinePos()
 
