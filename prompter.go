@@ -69,6 +69,13 @@ func (p *Prompter) SetLocation(x, y int) {
 	p.y = y+1
 }
 
+// NeedWrite returns true if there are any pending changes to the line or
+// cursor position
+func (p *Prompter) NeedWrite() bool {
+	line, pos := p.LinePos()
+	return line != p.line || pos != p.pos
+}
+
 func (p *Prompter) WriteChanges() {
 	line, pos := p.LinePos()
 
