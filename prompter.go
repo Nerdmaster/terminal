@@ -23,6 +23,28 @@ type Prompter struct {
 	prompted bool
 }
 
+// visualLength returns the number of visible glyphs in a string
+func visualLength(s string) int {
+	runes := []rune(s)
+	inEscapeSeq := false
+	length := 0
+
+	for _, r := range runes {
+		switch {
+		case inEscapeSeq:
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEscapeSeq = false
+			}
+		case r == '\x1b':
+			inEscapeSeq = true
+		default:
+			length++
+		}
+	}
+
+	return length
+}
+
 func NewPrompter(r io.Reader, w io.Writer, p string) *Prompter {
 	return &Prompter{Reader: NewReader(r), Out: w, prompt: p, buf: bytes.Buffer{}, x: 1, y: 1}
 }
@@ -36,7 +58,7 @@ func (p *Prompter) ReadLine() (string, error) {
 // while a ReadLine is in progress, you won't be happy.
 func (p *Prompter) SetLocation(x, y int) {
 	p.x = x+1
-	p.inputX = p.x + len(p.prompt)
+	p.inputX = p.x + visualLength(p.prompt)
 	p.y = y+1
 }
 
