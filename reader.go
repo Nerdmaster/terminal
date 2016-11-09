@@ -95,6 +95,8 @@ const (
 	keyClearScreen
 	keyPasteStart
 	keyPasteEnd
+	keyPgUp
+	keyPgDn
 )
 
 var pasteStart = []byte{keyEscape, '[', '2', '0', '0', '~'}
@@ -146,6 +148,16 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 			return keyHome, b[3:]
 		case 'F':
 			return keyEnd, b[3:]
+		case '5':
+			switch b[3] {
+			case '~':
+				return keyPgUp, b[4:]
+			}
+		case '6':
+			switch b[3] {
+			case '~':
+				return keyPgDn, b[4:]
+			}
 		}
 	}
 
