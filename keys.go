@@ -127,11 +127,15 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		return KeyPasteEnd, b[6:]
 	}
 
-	// If we get here then we have a key that we don't recognise, or a
-	// partial sequence. It's not clear how one should find the end of a
-	// sequence without knowing them all, but it seems that [a-zA-Z~] only
-	// appears at the end of a sequence.
+	return keyUnknown(b)
+}
+
+// keyUnknown attempts to parse the unknown key and return the next part of the
+// byte sequence.  If the key can't be figured out, it returns a RuneError.
+func keyUnknown(b []byte) (rune, []byte) {
 	for i, c := range b[0:] {
+		// It's not clear how to find the end of a sequence without knowing them
+		// all, but it seems that [a-zA-Z~] only appears at the end of a sequence
 		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '~' {
 			return KeyUnknown, b[i+1:]
 		}
