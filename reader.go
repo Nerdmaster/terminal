@@ -76,31 +76,31 @@ func NewReader(c io.Reader) *Reader {
 }
 
 const (
-	keyCtrlD     = 4
-	keyCtrlU     = 21
-	keyEnter     = '\r'
-	keyEscape    = 27
-	keyBackspace = 127
-	keyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
-	keyUp
-	keyDown
-	keyLeft
-	keyRight
-	keyAltLeft
-	keyAltRight
-	keyHome
-	keyEnd
-	keyDeleteWord
-	keyDeleteLine
-	keyClearScreen
-	keyPasteStart
-	keyPasteEnd
-	keyPgUp
-	keyPgDn
+	KeyCtrlD     = 4
+	KeyCtrlU     = 21
+	KeyEnter     = '\r'
+	KeyEscape    = 27
+	KeyBackspace = 127
+	KeyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
+	KeyUp
+	KeyDown
+	KeyLeft
+	KeyRight
+	KeyAltLeft
+	KeyAltRight
+	KeyHome
+	KeyEnd
+	KeyDeleteWord
+	KeyDeleteLine
+	KeyClearScreen
+	KeyPasteStart
+	KeyPasteEnd
+	KeyPgUp
+	KeyPgDn
 )
 
-var pasteStart = []byte{keyEscape, '[', '2', '0', '0', '~'}
-var pasteEnd = []byte{keyEscape, '[', '2', '0', '1', '~'}
+var pasteStart = []byte{KeyEscape, '[', '2', '0', '0', '~'}
+var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
 
 // bytesToKey tries to parse a key sequence from b. If successful, it returns
 // the key and the remainder of the input. Otherwise it returns utf8.RuneError.
@@ -112,21 +112,21 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 	if !pasteActive {
 		switch b[0] {
 		case 1: // ^A
-			return keyHome, b[1:]
+			return KeyHome, b[1:]
 		case 5: // ^E
-			return keyEnd, b[1:]
+			return KeyEnd, b[1:]
 		case 8: // ^H
-			return keyBackspace, b[1:]
+			return KeyBackspace, b[1:]
 		case 11: // ^K
-			return keyDeleteLine, b[1:]
+			return KeyDeleteLine, b[1:]
 		case 12: // ^L
-			return keyClearScreen, b[1:]
+			return KeyClearScreen, b[1:]
 		case 23: // ^W
-			return keyDeleteWord, b[1:]
+			return KeyDeleteWord, b[1:]
 		}
 	}
 
-	if b[0] != keyEscape {
+	if b[0] != KeyEscape {
 		if !utf8.FullRune(b) {
 			return utf8.RuneError, b
 		}
@@ -134,48 +134,48 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		return r, b[l:]
 	}
 
-	if !pasteActive && len(b) >= 3 && b[0] == keyEscape && b[1] == '[' {
+	if !pasteActive && len(b) >= 3 && b[0] == KeyEscape && b[1] == '[' {
 		switch b[2] {
 		case 'A':
-			return keyUp, b[3:]
+			return KeyUp, b[3:]
 		case 'B':
-			return keyDown, b[3:]
+			return KeyDown, b[3:]
 		case 'C':
-			return keyRight, b[3:]
+			return KeyRight, b[3:]
 		case 'D':
-			return keyLeft, b[3:]
+			return KeyLeft, b[3:]
 		case 'H':
-			return keyHome, b[3:]
+			return KeyHome, b[3:]
 		case 'F':
-			return keyEnd, b[3:]
+			return KeyEnd, b[3:]
 		case '5':
 			switch b[3] {
 			case '~':
-				return keyPgUp, b[4:]
+				return KeyPgUp, b[4:]
 			}
 		case '6':
 			switch b[3] {
 			case '~':
-				return keyPgDn, b[4:]
+				return KeyPgDn, b[4:]
 			}
 		}
 	}
 
-	if !pasteActive && len(b) >= 6 && b[0] == keyEscape && b[1] == '[' && b[2] == '1' && b[3] == ';' && b[4] == '3' {
+	if !pasteActive && len(b) >= 6 && b[0] == KeyEscape && b[1] == '[' && b[2] == '1' && b[3] == ';' && b[4] == '3' {
 		switch b[5] {
 		case 'C':
-			return keyAltRight, b[6:]
+			return KeyAltRight, b[6:]
 		case 'D':
-			return keyAltLeft, b[6:]
+			return KeyAltLeft, b[6:]
 		}
 	}
 
 	if !pasteActive && len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {
-		return keyPasteStart, b[6:]
+		return KeyPasteStart, b[6:]
 	}
 
 	if pasteActive && len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
-		return keyPasteEnd, b[6:]
+		return KeyPasteEnd, b[6:]
 	}
 
 	// If we get here then we have a key that we don't recognise, or a
@@ -203,47 +203,47 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 	defer r.m.Unlock()
 
 	i := r.input
-	if r.pasteActive && key != keyEnter {
+	if r.pasteActive && key != KeyEnter {
 		i.AddKeyToLine(key)
 		return
 	}
 
 	switch key {
-	case keyBackspace:
+	case KeyBackspace:
 		i.EraseNPreviousChars(1)
-	case keyAltLeft:
+	case KeyAltLeft:
 		i.MoveToLeftWord()
-	case keyAltRight:
+	case KeyAltRight:
 		i.MoveToRightWord()
-	case keyLeft:
+	case KeyLeft:
 		i.MoveLeft()
-	case keyRight:
+	case KeyRight:
 		i.MoveRight()
-	case keyHome:
+	case KeyHome:
 		i.MoveHome()
-	case keyEnd:
+	case KeyEnd:
 		i.MoveEnd()
-	case keyUp:
+	case KeyUp:
 		ok := r.fetchPreviousHistory()
 		if !ok {
 			return "", false
 		}
-	case keyDown:
+	case KeyDown:
 		r.fetchNextHistory()
-	case keyEnter:
+	case KeyEnter:
 		line = i.String()
 		ok = true
 		i.Clear()
-	case keyDeleteWord:
+	case KeyDeleteWord:
 		i.EraseNPreviousChars(i.CountToLeftWord())
-	case keyDeleteLine:
+	case KeyDeleteLine:
 		i.DeleteLine()
-	case keyCtrlD:
+	case KeyCtrlD:
 		// (The EOF case is handled in ReadLine)
 		i.DeleteRuneUnderCursor()
-	case keyCtrlU:
+	case KeyCtrlU:
 		i.DeleteToBeginningOfLine()
-	case keyClearScreen:
+	case KeyClearScreen:
 		// TODO: implement a callback for this
 	default:
 		if r.AutoCompleteCallback != nil {
@@ -294,19 +294,19 @@ func (r *Reader) ReadLine() (line string, err error) {
 			r.m.RUnlock()
 
 			if !r.pasteActive {
-				if key == keyCtrlD {
+				if key == KeyCtrlD {
 					if lineLen == 0 {
 						return "", io.EOF
 					}
 				}
-				if key == keyPasteStart {
+				if key == KeyPasteStart {
 					r.pasteActive = true
 					if lineLen == 0 {
 						lineIsPasted = true
 					}
 					continue
 				}
-			} else if key == keyPasteEnd {
+			} else if key == KeyPasteEnd {
 				r.pasteActive = false
 				continue
 			}
