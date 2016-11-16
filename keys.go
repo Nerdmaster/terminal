@@ -6,10 +6,34 @@ import (
 )
 
 const (
-	KeyCtrlD     = 4
-	KeyCtrlU     = 21
+	KeyCtrlA = 1 + iota
+	KeyCtrlB
+	KeyCtrlC
+	KeyCtrlD
+	KeyCtrlE
+	KeyCtrlF
+	KeyCtrlG
+	KeyCtrlH
+	KeyCtrlI
+	KeyCtrlJ
+	KeyCtrlK
+	KeyCtrlL
+	KeyCtrlM
+	KeyCtrlN
+	KeyCtrlO
+	KeyCtrlP
+	KeyCtrlQ
+	KeyCtrlR
+	KeyCtrlS
+	KeyCtrlT
+	KeyCtrlU
+	KeyCtrlV
+	KeyCtrlW
+	KeyCtrlX
+	KeyCtrlY
+	KeyCtrlZ
+	KeyEscape
 	KeyEnter     = '\r'
-	KeyEscape    = 27
 	KeyBackspace = 127
 	KeyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
 	KeyUp
