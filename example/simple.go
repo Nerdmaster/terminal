@@ -21,6 +21,17 @@ var t *terminal.Reader
 
 var validRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*")
 
+func onKeypress(e *terminal.KeyEvent) {
+	// How can I ki amias without the  key?
+	if e.Key == 'l' {
+		e.IgnoreDefaultHandlers = true
+	}
+
+	if e.Key == terminal.KeyPgUp {
+		e.Key = 'l'
+	}
+}
+
 func printAt(x, y int, output string) {
 	fmt.Fprintf(os.Stdout, "%s%d;%dH%s", CSI, y, x, output)
 }
@@ -77,6 +88,7 @@ func main() {
 
 	t = terminal.NewReader(os.Stdout)
 	t.MaxLineLength = 70
+	t.OnKeypress = onKeypress
 	go readInput()
 	go printOutput()
 

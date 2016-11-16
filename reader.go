@@ -13,6 +13,13 @@ import (
 
 const DefaultMaxLineLength = 4096
 
+// KeyEvent is used for OnKeypress handlers to get the key and modify handler
+// state when the custom handler needs default handlers to be bypassed
+type KeyEvent struct {
+	Key                   rune
+	IgnoreDefaultHandlers bool
+}
+
 // Reader contains the state for running a VT100 terminal that is capable of
 // reading lines of input.  It is similar to the golang crypto/ssh/terminal
 // package except that it doesn't write, leaving that to the caller.  The idea
@@ -21,6 +28,10 @@ const DefaultMaxLineLength = 4096
 // it.  This separation enables more complex applications where there's other
 // real-time data being rendered at the same time as the input line.
 type Reader struct {
+	// OnKeypress, if non-null, is called for each keypress with the key sent in.
+	// If it returns false, default handlers are not invoked.
+	OnKeypress func(event *KeyEvent)
+
 	// AutoCompleteCallback, if non-null, is called for each keypress with
 	// the full input line and the current position of the cursor (in
 	// bytes, as an index into |line|). If it returns ok=false, the key
@@ -124,6 +135,15 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 	case KeyClearScreen:
 		// TODO: implement a callback for this
 	default:
+		if r.OnKeypress != nil {
+			e := &KeyEvent{Key: key}
+			r.OnKeypress(e)
+			if e.IgnoreDefaultHandlers {
+				return
+			}
+			key = e.Key
+		}
+
 		if r.AutoCompleteCallback != nil {
 			prefix, suffix := i.Split()
 			newLine, newPos, completeOk := r.AutoCompleteCallback(prefix+suffix, len(prefix), key)
