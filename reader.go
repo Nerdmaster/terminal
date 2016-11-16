@@ -98,7 +98,7 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 	}
 
 	switch key {
-	case KeyBackspace:
+	case KeyBackspace, KeyCtrlH:
 		i.EraseNPreviousChars(1)
 	case KeyAltLeft:
 		i.MoveToLeftWord()
@@ -108,9 +108,9 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 		i.MoveLeft()
 	case KeyRight:
 		i.MoveRight()
-	case KeyHome:
+	case KeyHome, KeyCtrlA:
 		i.MoveHome()
-	case KeyEnd:
+	case KeyEnd, KeyCtrlE:
 		i.MoveEnd()
 	case KeyUp:
 		ok := r.fetchPreviousHistory()
@@ -123,17 +123,15 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 		line = i.String()
 		ok = true
 		i.Clear()
-	case KeyDeleteWord:
+	case KeyCtrlW:
 		i.EraseNPreviousChars(i.CountToLeftWord())
-	case KeyDeleteLine:
+	case KeyCtrlK:
 		i.DeleteLine()
 	case KeyCtrlD:
 		// (The EOF case is handled in ReadLine)
 		i.DeleteRuneUnderCursor()
 	case KeyCtrlU:
 		i.DeleteToBeginningOfLine()
-	case KeyClearScreen:
-		// TODO: implement a callback for this
 	default:
 		if r.OnKeypress != nil {
 			e := &KeyEvent{Key: key}

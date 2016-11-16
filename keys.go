@@ -44,9 +44,6 @@ const (
 	KeyAltRight
 	KeyHome
 	KeyEnd
-	KeyDeleteWord
-	KeyDeleteLine
-	KeyClearScreen
 	KeyPasteStart
 	KeyPasteEnd
 	KeyPgUp
@@ -64,19 +61,8 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 	}
 
 	if !pasteActive {
-		switch b[0] {
-		case 1: // ^A
-			return KeyHome, b[1:]
-		case 5: // ^E
-			return KeyEnd, b[1:]
-		case 8: // ^H
-			return KeyBackspace, b[1:]
-		case 11: // ^K
-			return KeyDeleteLine, b[1:]
-		case 12: // ^L
-			return KeyClearScreen, b[1:]
-		case 23: // ^W
-			return KeyDeleteWord, b[1:]
+		if b[0] < KeyEscape {
+			return rune(b[0]), b[1:]
 		}
 	}
 
