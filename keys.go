@@ -76,7 +76,14 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		return r, b[l:]
 	}
 
-	if !pasteActive && len(b) >= 3 && b[0] == KeyEscape && b[1] == '[' {
+	if pasteActive {
+		if len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
+			return KeyPasteEnd, b[6:]
+		}
+		return keyUnknown(b)
+	}
+
+	if len(b) >= 3 && b[0] == KeyEscape && b[1] == '[' {
 		switch b[2] {
 		case 'A':
 			return KeyUp, b[3:]
@@ -110,7 +117,7 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		}
 	}
 
-	if !pasteActive && len(b) >= 6 && b[0] == KeyEscape && b[1] == '[' && b[2] == '1' && b[3] == ';' && b[4] == '3' {
+	if len(b) >= 6 && b[0] == KeyEscape && b[1] == '[' && b[2] == '1' && b[3] == ';' && b[4] == '3' {
 		switch b[5] {
 		case 'C':
 			return KeyAltRight, b[6:]
@@ -119,12 +126,8 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		}
 	}
 
-	if !pasteActive && len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {
+	if len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {
 		return KeyPasteStart, b[6:]
-	}
-
-	if pasteActive && len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
-		return KeyPasteEnd, b[6:]
 	}
 
 	return keyUnknown(b)
