@@ -46,6 +46,8 @@ const (
 	KeyEnd
 	KeyPasteStart
 	KeyPasteEnd
+	KeyInsert
+	KeyDelete
 	KeyPgUp
 	KeyPgDn
 )
@@ -88,6 +90,26 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 			return KeyHome, b[3:]
 		case 'F':
 			return KeyEnd, b[3:]
+		case '1':
+			switch b[3] {
+			case '~':
+				return KeyHome, b[4:]
+			}
+		case '2':
+			switch b[3] {
+			case '~':
+				return KeyInsert, b[4:]
+			}
+		case '3':
+			switch b[3] {
+			case '~':
+				return KeyDelete, b[4:]
+			}
+		case '4':
+			switch b[3] {
+			case '~':
+				return KeyEnd, b[4:]
+			}
 		case '5':
 			switch b[3] {
 			case '~':
