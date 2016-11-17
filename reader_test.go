@@ -115,6 +115,11 @@ var keyPressTests = []struct {
 		line: "a b ",
 	},
 	{
+		// CTRL+A to move to beginning of line, right-arrow, add one character
+		in:   "tusting\001\x1b[Cr\r",
+		line: "trusting",
+	},
+	{
 		in:   "\027\r",
 		line: "",
 	},
