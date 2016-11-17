@@ -58,7 +58,8 @@ var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
 // bytesToKey tries to parse a key sequence from b. If successful, it returns
 // the key and the remainder of the input. Otherwise it returns utf8.RuneError.
 func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
-	if len(b) == 0 {
+	var l = len(b)
+	if l == 0 {
 		return utf8.RuneError, nil
 	}
 
@@ -84,41 +85,54 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		return keyUnknown(b)
 	}
 
-	if len(b) >= 3 && b[0] == KeyEscape && b[1] == '[' {
-		switch b[2] {
-		case 'A':
-			return KeyUp, b[3:]
-		case 'B':
-			return KeyDown, b[3:]
-		case 'C':
-			return KeyRight, b[3:]
-		case 'D':
-			return KeyLeft, b[3:]
-		case 'H':
-			return KeyHome, b[3:]
-		case 'F':
-			return KeyEnd, b[3:]
-		}
+	// From the above test we know the first key is escape.  Everything else we
+	// know how to handle is escape followed by a left bracket followed by at
+	// least one character.
+	if l < 3 || b[1] != '[' {
+		return keyUnknown(b)
+	}
 
-		if len(b) >= 4 && b[3] == '~' {
-			switch b[2] {
-			case '1':
-				return KeyHome, b[4:]
-			case '2':
-				return KeyInsert, b[4:]
-			case '3':
-				return KeyDelete, b[4:]
-			case '4':
-				return KeyEnd, b[4:]
-			case '5':
-				return KeyPgUp, b[4:]
-			case '6':
-				return KeyPgDn, b[4:]
-			}
+	switch b[2] {
+	case 'A':
+		return KeyUp, b[3:]
+	case 'B':
+		return KeyDown, b[3:]
+	case 'C':
+		return KeyRight, b[3:]
+	case 'D':
+		return KeyLeft, b[3:]
+	case 'H':
+		return KeyHome, b[3:]
+	case 'F':
+		return KeyEnd, b[3:]
+	}
+
+	if l < 4 {
+		return keyUnknown(b)
+	}
+
+	if b[3] == '~' {
+		switch b[2] {
+		case '1':
+			return KeyHome, b[4:]
+		case '2':
+			return KeyInsert, b[4:]
+		case '3':
+			return KeyDelete, b[4:]
+		case '4':
+			return KeyEnd, b[4:]
+		case '5':
+			return KeyPgUp, b[4:]
+		case '6':
+			return KeyPgDn, b[4:]
 		}
 	}
 
-	if len(b) >= 6 && b[0] == KeyEscape && b[1] == '[' && b[2] == '1' && b[3] == ';' && b[4] == '3' {
+	if l < 6 {
+		return keyUnknown(b)
+	}
+
+	if b[2] == '1' && b[3] == ';' && b[4] == '3' {
 		switch b[5] {
 		case 'C':
 			return KeyAltRight, b[6:]
@@ -152,4 +166,3 @@ func isPrintable(key rune) bool {
 	isInSurrogateArea := key >= 0xd800 && key <= 0xdbff
 	return key >= 32 && !isInSurrogateArea
 }
-
