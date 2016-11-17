@@ -120,6 +120,11 @@ var keyPressTests = []struct {
 		line: "trusting",
 	},
 	{
+		// Home to move to beginning of line, right-arrow, add one character, End, add one character
+		in:   "tustin\x1b[1~\x1b[Cr\x1b[4~g\r",
+		line: "trusting",
+	},
+	{
 		in:   "\027\r",
 		line: "",
 	},
