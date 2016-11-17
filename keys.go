@@ -62,10 +62,11 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		return utf8.RuneError, nil
 	}
 
-	if !pasteActive {
-		if b[0] < KeyEscape {
-			return rune(b[0]), b[1:]
-		}
+	// Handle ctrl keys early (DecodeRune can do this, but it's a bit quicker to
+	// handle this first (I'm assuming so, anyway, since the original
+	// implementation did this first)
+	if b[0] < KeyEscape {
+		return rune(b[0]), b[1:]
 	}
 
 	if b[0] != KeyEscape {
