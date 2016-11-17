@@ -40,8 +40,6 @@ const (
 	KeyDown
 	KeyLeft
 	KeyRight
-	KeyAltLeft
-	KeyAltRight
 	KeyHome
 	KeyEnd
 	KeyPasteStart
@@ -50,6 +48,21 @@ const (
 	KeyDelete
 	KeyPgUp
 	KeyPgDn
+
+	KeyAlt           = 0x0100
+	KeyAltUnknown    = KeyAlt + KeyUnknown
+	KeyAltUp         = KeyAlt + KeyUp
+	KeyAltDown       = KeyAlt + KeyDown
+	KeyAltLeft       = KeyAlt + KeyLeft
+	KeyAltRight      = KeyAlt + KeyRight
+	KeyAltHome       = KeyAlt + KeyHome
+	KeyAltEnd        = KeyAlt + KeyEnd
+	KeyAltPasteStart = KeyAlt + KeyPasteStart
+	KeyAltPasteEnd   = KeyAlt + KeyPasteEnd
+	KeyAltInsert     = KeyAlt + KeyInsert
+	KeyAltDelete     = KeyAlt + KeyDelete
+	KeyAltPgUp       = KeyAlt + KeyPgUp
+	KeyAltPgDn       = KeyAlt + KeyPgDn
 )
 
 var pasteStart = []byte{KeyEscape, '[', '2', '0', '0', '~'}
@@ -86,59 +99,72 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 	}
 
 	// From the above test we know the first key is escape.  Everything else we
-	// know how to handle is escape followed by a left bracket followed by at
-	// least one character.
-	if l < 3 || b[1] != '[' {
+	// know how to handle is at least 3 bytes
+	if l < 3 {
 		return keyUnknown(b)
+	}
+
+	// Alt keys, at least over SSH, come through as 0x1b, 0x1b, ...
+	var alt rune
+	if b[1] == 0x1b {
+		b = b[1:]
+		l--
+		alt = KeyAlt
+	}
+
+	// If it wasn't an SSH alt key, it has to be escape followed by a left bracket
+	if b[1] != '[' {
+		return keyUnknown(b)
+	}
+
+	// Local terminal alt keys seem to be longer sequences that come through as
+	// 0x1b, "[1;3", ...
+	if l >= 6 && b[2] == '1' && b[3] == ';' && b[4] == '3' {
+		b = append([]byte{0x1b, '['}, b[5:]...)
+		l -= 2
+		alt = KeyAlt
 	}
 
 	switch b[2] {
 	case 'A':
-		return KeyUp, b[3:]
+		return KeyUp + alt, b[3:]
 	case 'B':
-		return KeyDown, b[3:]
+		return KeyDown + alt, b[3:]
 	case 'C':
-		return KeyRight, b[3:]
+		return KeyRight + alt, b[3:]
 	case 'D':
-		return KeyLeft, b[3:]
+		return KeyLeft + alt, b[3:]
 	case 'H':
-		return KeyHome, b[3:]
+		return KeyHome + alt, b[3:]
 	case 'F':
-		return KeyEnd, b[3:]
+		return KeyEnd + alt, b[3:]
 	}
 
 	if l < 4 {
 		return keyUnknown(b)
 	}
 
+	// NOTE: these appear to be escape sequences I see in SSH, but some don't
+	// actually seem to happen on a local terminal!
 	if b[3] == '~' {
 		switch b[2] {
 		case '1':
-			return KeyHome, b[4:]
+			return KeyHome + alt, b[4:]
 		case '2':
-			return KeyInsert, b[4:]
+			return KeyInsert + alt, b[4:]
 		case '3':
-			return KeyDelete, b[4:]
+			return KeyDelete + alt, b[4:]
 		case '4':
-			return KeyEnd, b[4:]
+			return KeyEnd + alt, b[4:]
 		case '5':
-			return KeyPgUp, b[4:]
+			return KeyPgUp + alt, b[4:]
 		case '6':
-			return KeyPgDn, b[4:]
+			return KeyPgDn + alt, b[4:]
 		}
 	}
 
 	if l < 6 {
 		return keyUnknown(b)
-	}
-
-	if b[2] == '1' && b[3] == ';' && b[4] == '3' {
-		switch b[5] {
-		case 'C':
-			return KeyAltRight, b[6:]
-		case 'D':
-			return KeyAltLeft, b[6:]
-		}
 	}
 
 	if len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {
