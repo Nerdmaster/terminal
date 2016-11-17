@@ -101,7 +101,7 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		}
 
 		if len(b) >= 4 && b[3] == '~' {
-			switch b[3] {
+			switch b[2] {
 			case '1':
 				return KeyHome, b[4:]
 			case '2':
