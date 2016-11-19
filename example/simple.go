@@ -30,6 +30,15 @@ func onKeypress(e *terminal.KeyEvent) {
 	if e.Key == terminal.KeyPgUp {
 		e.Key = 'l'
 	}
+
+	if e.Key == terminal.KeyAltPgUp {
+		e.Key = 'ģ'
+	}
+
+	if e.Key == terminal.KeyLeft {
+		fmt.Print(ClearScreen)
+		e.IgnoreDefaultHandlers = true
+	}
 }
 
 func printAt(x, y int, output string) {
