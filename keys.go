@@ -70,7 +70,7 @@ var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
 
 // bytesToKey tries to parse a key sequence from b. If successful, it returns
 // the key and the remainder of the input. Otherwise it returns utf8.RuneError.
-func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
+func bytesToKey(b []byte) (rune, []byte) {
 	var l = len(b)
 	if l == 0 {
 		return utf8.RuneError, nil
@@ -89,13 +89,6 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		}
 		r, l := utf8.DecodeRune(b)
 		return r, b[l:]
-	}
-
-	if pasteActive {
-		if len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
-			return KeyPasteEnd, b[6:]
-		}
-		return keyUnknown(b)
 	}
 
 	// From the above test we know the first key is escape.  Everything else we
@@ -165,6 +158,10 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 
 	if l < 6 {
 		return keyUnknown(b)
+	}
+
+	if len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
+		return KeyPasteEnd, b[6:]
 	}
 
 	if len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {

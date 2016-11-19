@@ -180,7 +180,7 @@ func (r *Reader) ReadLine() (line string, err error) {
 		lineOk := false
 		for !lineOk {
 			var key rune
-			key, rest = bytesToKey(rest, r.pasteActive)
+			key, rest = bytesToKey(rest)
 			if key == utf8.RuneError {
 				break
 			}
