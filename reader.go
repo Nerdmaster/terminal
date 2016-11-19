@@ -184,7 +184,7 @@ func (r *Reader) ReadLine() (line string, err error) {
 			}
 
 			var key rune
-			key, rest = bytesToKey(rest)
+			key, rest = ParseKey(rest)
 			if key == utf8.RuneError {
 				break
 			}

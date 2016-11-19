@@ -68,9 +68,10 @@ const (
 var pasteStart = []byte{KeyEscape, '[', '2', '0', '0', '~'}
 var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
 
-// bytesToKey tries to parse a key sequence from b. If successful, it returns
-// the key and the remainder of the input. Otherwise it returns utf8.RuneError.
-func bytesToKey(b []byte) (rune, []byte) {
+// ParseKey tries to parse a key sequence from b. If successful, it returns the
+// key and the remainder of the input. Otherwise it returns utf8.RuneError and
+// the untouched byte slice.
+func ParseKey(b []byte) (rune, []byte) {
 	var l = len(b)
 	if l == 0 {
 		return utf8.RuneError, nil
