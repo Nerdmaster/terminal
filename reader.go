@@ -97,6 +97,15 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 		return
 	}
 
+	if r.OnKeypress != nil {
+		e := &KeyEvent{Key: key}
+		r.OnKeypress(e)
+		if e.IgnoreDefaultHandlers {
+			return
+		}
+		key = e.Key
+	}
+
 	switch key {
 	case KeyBackspace, KeyCtrlH:
 		i.EraseNPreviousChars(1)
@@ -133,15 +142,6 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 	case KeyCtrlU:
 		i.DeleteToBeginningOfLine()
 	default:
-		if r.OnKeypress != nil {
-			e := &KeyEvent{Key: key}
-			r.OnKeypress(e)
-			if e.IgnoreDefaultHandlers {
-				return
-			}
-			key = e.Key
-		}
-
 		if r.AutoCompleteCallback != nil {
 			prefix, suffix := i.Split()
 			newLine, newPos, completeOk := r.AutoCompleteCallback(prefix+suffix, len(prefix), key)
