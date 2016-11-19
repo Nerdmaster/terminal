@@ -86,7 +86,7 @@ func setupNoise() {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	oldState, err := terminal.MakeRaw(0)
+	oldState, err := terminal.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +95,7 @@ func main() {
 	setupNoise()
 	initializeScreen()
 
-	t = terminal.NewReader(os.Stdout)
+	t = terminal.NewReader(os.Stdin)
 	t.MaxLineLength = 70
 	t.OnKeypress = onKeypress
 	go readInput()
