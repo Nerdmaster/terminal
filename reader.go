@@ -127,7 +127,7 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 		i.EraseNPreviousChars(i.CountToLeftWord())
 	case KeyCtrlK:
 		i.DeleteLine()
-	case KeyCtrlD:
+	case KeyCtrlD, KeyDelete:
 		// (The EOF case is handled in ReadLine)
 		i.DeleteRuneUnderCursor()
 	case KeyCtrlU:
