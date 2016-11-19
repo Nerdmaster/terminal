@@ -179,6 +179,10 @@ func (r *Reader) ReadLine() (line string, err error) {
 		rest := r.remainder
 		lineOk := false
 		for !lineOk {
+			if len(rest) == 0 {
+				break
+			}
+
 			var key rune
 			key, rest = bytesToKey(rest)
 			if key == utf8.RuneError {
