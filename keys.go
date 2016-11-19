@@ -104,7 +104,7 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		return keyUnknown(b)
 	}
 
-	// Alt keys, at least over SSH, come through as 0x1b, 0x1b, ...
+	// Alt keys, at least from tmux sessions, come through as 0x1b, 0x1b, ...
 	var alt rune
 	if b[1] == 0x1b {
 		b = b[1:]
@@ -112,7 +112,7 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		alt = KeyAlt
 	}
 
-	// If it wasn't an SSH alt key, it has to be escape followed by a left bracket
+	// If it wasn't a tmux alt key, it has to be escape followed by a left bracket
 	if b[1] != '[' {
 		return keyUnknown(b)
 	}
@@ -144,8 +144,8 @@ func bytesToKey(b []byte, pasteActive bool) (rune, []byte) {
 		return keyUnknown(b)
 	}
 
-	// NOTE: these appear to be escape sequences I see in SSH, but some don't
-	// actually seem to happen on a local terminal!
+	// NOTE: these appear to be escape sequences I see in tmux, but some don't
+	// actually seem to happen on a "direct" terminal!
 	if b[3] == '~' {
 		switch b[2] {
 		case '1':
