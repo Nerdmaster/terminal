@@ -69,27 +69,26 @@ var pasteStart = []byte{KeyEscape, '[', '2', '0', '0', '~'}
 var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
 
 // ParseKey tries to parse a key sequence from b. If successful, it returns the
-// key and the remainder of the input. Otherwise it returns utf8.RuneError and
-// the untouched byte slice.
-func ParseKey(b []byte) (rune, []byte) {
+// key and the length in bytes of that key. Otherwise it returns utf8.RuneError, 0.
+func ParseKey(b []byte) (rune, int) {
+	var runeLen int
 	var l = len(b)
 	if l == 0 {
-		return utf8.RuneError, nil
+		return utf8.RuneError, 0
 	}
 
 	// Handle ctrl keys early (DecodeRune can do this, but it's a bit quicker to
 	// handle this first (I'm assuming so, anyway, since the original
 	// implementation did this first)
 	if b[0] < KeyEscape {
-		return rune(b[0]), b[1:]
+		return rune(b[0]), 1
 	}
 
 	if b[0] != KeyEscape {
 		if !utf8.FullRune(b) {
-			return utf8.RuneError, b
+			return utf8.RuneError, 0
 		}
-		r, l := utf8.DecodeRune(b)
-		return r, b[l:]
+		return utf8.DecodeRune(b)
 	}
 
 	// From the above test we know the first key is escape.  Everything else we
@@ -103,6 +102,7 @@ func ParseKey(b []byte) (rune, []byte) {
 	if b[1] == 0x1b {
 		b = b[1:]
 		l--
+		runeLen = 1
 		alt = KeyAlt
 	}
 
@@ -116,74 +116,79 @@ func ParseKey(b []byte) (rune, []byte) {
 	if l >= 6 && b[2] == '1' && b[3] == ';' && b[4] == '3' {
 		b = append([]byte{0x1b, '['}, b[5:]...)
 		l -= 2
+		runeLen = 2
 		alt = KeyAlt
 	}
 
+	// From here on, all known return values must be at least 3 characters
+	runeLen += 3
 	switch b[2] {
 	case 'A':
-		return KeyUp + alt, b[3:]
+		return KeyUp + alt, runeLen
 	case 'B':
-		return KeyDown + alt, b[3:]
+		return KeyDown + alt, runeLen
 	case 'C':
-		return KeyRight + alt, b[3:]
+		return KeyRight + alt, runeLen
 	case 'D':
-		return KeyLeft + alt, b[3:]
+		return KeyLeft + alt, runeLen
 	case 'H':
-		return KeyHome + alt, b[3:]
+		return KeyHome + alt, runeLen
 	case 'F':
-		return KeyEnd + alt, b[3:]
+		return KeyEnd + alt, runeLen
 	}
 
 	if l < 4 {
 		return keyUnknown(b)
 	}
+	runeLen++
 
 	// NOTE: these appear to be escape sequences I see in tmux, but some don't
 	// actually seem to happen on a "direct" terminal!
 	if b[3] == '~' {
 		switch b[2] {
 		case '1':
-			return KeyHome + alt, b[4:]
+			return KeyHome + alt, runeLen
 		case '2':
-			return KeyInsert + alt, b[4:]
+			return KeyInsert + alt, runeLen
 		case '3':
-			return KeyDelete + alt, b[4:]
+			return KeyDelete + alt, runeLen
 		case '4':
-			return KeyEnd + alt, b[4:]
+			return KeyEnd + alt, runeLen
 		case '5':
-			return KeyPgUp + alt, b[4:]
+			return KeyPgUp + alt, runeLen
 		case '6':
-			return KeyPgDn + alt, b[4:]
+			return KeyPgDn + alt, runeLen
 		}
 	}
 
 	if l < 6 {
 		return keyUnknown(b)
 	}
+	runeLen += 2
 
 	if len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
-		return KeyPasteEnd, b[6:]
+		return KeyPasteEnd, runeLen
 	}
 
 	if len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {
-		return KeyPasteStart, b[6:]
+		return KeyPasteStart, runeLen
 	}
 
 	return keyUnknown(b)
 }
 
-// keyUnknown attempts to parse the unknown key and return the next part of the
-// byte sequence.  If the key can't be figured out, it returns a RuneError.
-func keyUnknown(b []byte) (rune, []byte) {
+// keyUnknown attempts to parse the unknown key and return its size.  If the
+// key can't be figured out, it returns a RuneError.
+func keyUnknown(b []byte) (rune, int) {
 	for i, c := range b[0:] {
 		// It's not clear how to find the end of a sequence without knowing them
 		// all, but it seems that [a-zA-Z~] only appears at the end of a sequence
 		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '~' {
-			return KeyUnknown, b[i+1:]
+			return KeyUnknown, i + 1
 		}
 	}
 
-	return utf8.RuneError, b
+	return utf8.RuneError, 0
 }
 
 func isPrintable(key rune) bool {
