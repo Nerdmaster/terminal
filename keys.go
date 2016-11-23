@@ -70,7 +70,9 @@ var pasteStart = []byte{KeyEscape, '[', '2', '0', '0', '~'}
 var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
 
 // Keypress contains the data which made up a key: our internal KeyXXX constant
-// and the bytes which were parsed to get said constant
+// and the bytes which were parsed to get said constant.  If the raw bytes need
+// to be held for any reason, they should be copied, not stored as-is, since
+// what's in here is a simple slice into the raw buffer.
 type Keypress struct {
 	Key  rune
 	Size int
