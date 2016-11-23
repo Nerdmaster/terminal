@@ -83,7 +83,6 @@ type Keypress struct {
 // stream, usually stdin or an ssh socket
 type KeyReader struct {
 	input  io.Reader
-	closed bool
 
 	// remainder contains the remainder of any partial key sequences after
 	// a read. It aliases into inBuf.
@@ -97,11 +96,6 @@ type KeyReader struct {
 
 func NewKeyReader(i io.Reader) *KeyReader {
 	return &KeyReader{input: i}
-}
-
-// Close closes the output channel and tells ReadKeys to stop if it's working
-func (r *KeyReader) Close() {
-	r.closed = true
 }
 
 // ReadKeypress reads the next key sequence, returning a Keypress object and possibly
