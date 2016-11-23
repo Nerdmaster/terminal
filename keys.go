@@ -181,7 +181,7 @@ func ParseKey(b []byte) (rune, int) {
 		return keyUnknown(b)
 	}
 
-	// Alt keys, at least from tmux sessions, come through as 0x1b, 0x1b, ...
+	// Various alt keys, at least from tmux sessions, come through as 0x1b, 0x1b, ...
 	var alt rune
 	if b[1] == 0x1b {
 		b = b[1:]
@@ -195,12 +195,20 @@ func ParseKey(b []byte) (rune, int) {
 		return keyUnknown(b)
 	}
 
-	// Local terminal alt keys seem to be longer sequences that come through as
-	// 0x1b, "[1;3", ...
+	// Local terminal alt keys are sometimes longer sequences that come through
+	// as "\x1b[1;3" + some alpha
 	if l >= 6 && b[2] == '1' && b[3] == ';' && b[4] == '3' {
 		b = append([]byte{0x1b, '['}, b[5:]...)
-		l -= 2
-		runeLen = 2
+		l -= 3
+		runeLen = 3
+		alt = KeyAlt
+	}
+
+	// ...and sometimes they're "\x1b[", some num, ";3~"
+	if l >= 6 && b[3] == ';' && b[4] == '3' && b[5] == '~' {
+		b = append([]byte{0x1b, '[', b[2]}, b[6:]...)
+		l -= 3
+		runeLen = 3
 		alt = KeyAlt
 	}
 
