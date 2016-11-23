@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"bytes"
+	"io"
 	"unicode/utf8"
 )
 
@@ -67,6 +68,87 @@ const (
 
 var pasteStart = []byte{KeyEscape, '[', '2', '0', '0', '~'}
 var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
+
+// Keypress contains the data which made up a key: our internal KeyXXX constant
+// and the bytes which were parsed to get said constant
+type Keypress struct {
+	Key  rune
+	Size int
+	Raw  []byte
+}
+
+// KeyReader is the low-level type for reading raw keypresses from a given io
+// stream, usually stdin or an ssh socket
+type KeyReader struct {
+	input  io.Reader
+	closed bool
+
+	// remainder contains the remainder of any partial key sequences after
+	// a read. It aliases into inBuf.
+	remainder []byte
+	inBuf     [256]byte
+
+	// midRune is true when we believe we have a partial rune and need to read
+	// more bytes
+	midRune   bool
+}
+
+func NewKeyReader(i io.Reader) *KeyReader {
+	return &KeyReader{input: i}
+}
+
+// Close closes the output channel and tells ReadKeys to stop if it's working
+func (r *KeyReader) Close() {
+	r.closed = true
+}
+
+// ReadKeypress reads the next key sequence, returning a Keypress object and possibly
+// an error if the input stream can't be read for some reason.  This will block
+// only if the "remainder" buffer has no more data, which would obviously
+// require a read.
+func (r *KeyReader) ReadKeypress() (Keypress, error) {
+	if r.midRune || len(r.remainder) == 0 {
+		// r.remainder is a slice at the beginning of r.inBuf
+		// containing a partial key sequence
+		readBuf := r.inBuf[len(r.remainder):]
+
+		n, err := r.input.Read(readBuf)
+		if err != nil {
+			return Keypress{}, err
+		}
+
+		// After a read, we assume we are not mid-rune, and we adjust remainder to
+		// include what was just read
+		r.midRune = false
+		r.remainder = r.inBuf[:n+len(r.remainder)]
+	}
+
+	rest := r.remainder
+
+	// We must have bytes here; try to parse a key
+	key, i := ParseKey(rest)
+
+	// Rune errors combined with a zero-length character mean we've got a partial
+	// rune; invalid bytes get treated by utf8.DecodeRune as a 1-byte RuneError
+	if i == 0 && key == utf8.RuneError {
+		r.midRune = true
+	}
+
+	kp := Keypress{Key: key, Size: i, Raw: r.remainder[:i]}
+
+	// Move 'rest' forward
+	rest = rest[i:]
+
+	// If we still have bytes, adjust the buffers
+	if len(rest) > 0 {
+		n := copy(r.inBuf[:], rest)
+		r.remainder = r.inBuf[:n]
+	} else {
+		r.remainder = nil
+	}
+
+	return kp, nil
+}
 
 // ParseKey tries to parse a key sequence from b. If successful, it returns the
 // key and the length in bytes of that key. Otherwise it returns utf8.RuneError, 0.

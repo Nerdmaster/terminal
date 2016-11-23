@@ -16,7 +16,7 @@ const DefaultMaxLineLength = 4096
 // KeyEvent is used for OnKeypress handlers to get the key and modify handler
 // state when the custom handler needs default handlers to be bypassed
 type KeyEvent struct {
-	Key                   rune
+	Keypress
 	IgnoreDefaultHandlers bool
 }
 
@@ -39,8 +39,8 @@ type Reader struct {
 	// and the new cursor position.
 	AutoCompleteCallback func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
 
-	c io.Reader
-	m sync.RWMutex
+	keyReader *KeyReader
+	m         sync.RWMutex
 
 	// NoHistory is on when we don't want to preserve history, such as when a
 	// password is being entered
@@ -57,11 +57,6 @@ type Reader struct {
 	// progress.
 	pasteActive bool
 
-	// remainder contains the remainder of any partial key sequences after
-	// a read. It aliases into inBuf.
-	remainder []byte
-	inBuf     [256]byte
-
 	// history contains previously entered commands so that they can be
 	// accessed with the up and down keys.
 	history stRingBuffer
@@ -76,21 +71,22 @@ type Reader struct {
 
 // NewReader runs a terminal reader on the given io.Reader. If the Reader is a
 // local terminal, that terminal must first have been put into raw mode.
-func NewReader(c io.Reader) *Reader {
+func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		c:             c,
+		keyReader:     NewKeyReader(r),
 		MaxLineLength: DefaultMaxLineLength,
 		historyIndex:  -1,
 		input:         &Input{},
 	}
 }
 
-// handleKey processes the given key and, optionally, returns a line of text
-// that the user has entered.
-func (r *Reader) handleKey(key rune) (line string, ok bool) {
+// handleKeypress processes the given keypress data and, optionally, returns a
+// line of text that the user has entered.
+func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
+	key := kp.Key
 	i := r.input
 	if r.pasteActive && key != KeyEnter {
 		i.AddKeyToLine(key)
@@ -98,7 +94,7 @@ func (r *Reader) handleKey(key rune) (line string, ok bool) {
 	}
 
 	if r.OnKeypress != nil {
-		e := &KeyEvent{Key: key}
+		e := &KeyEvent{Keypress: kp}
 		r.OnKeypress(e)
 		if e.IgnoreDefaultHandlers {
 			return
@@ -176,17 +172,15 @@ func (r *Reader) ReadLine() (line string, err error) {
 	lineIsPasted := r.pasteActive
 
 	for {
-		rest := r.remainder
 		lineOk := false
 		for !lineOk {
-			if len(rest) == 0 {
-				break
+			var kp Keypress
+			kp, err = r.keyReader.ReadKeypress()
+			if err != nil {
+				return
 			}
 
-			var key rune
-			var i int
-			key, i = ParseKey(rest)
-			rest = rest[i:]
+			key := kp.Key
 			if key == utf8.RuneError {
 				break
 			}
@@ -215,13 +209,7 @@ func (r *Reader) ReadLine() (line string, err error) {
 			if !r.pasteActive {
 				lineIsPasted = false
 			}
-			line, lineOk = r.handleKey(key)
-		}
-		if len(rest) > 0 {
-			n := copy(r.inBuf[:], rest)
-			r.remainder = r.inBuf[:n]
-		} else {
-			r.remainder = nil
+			line, lineOk = r.handleKeypress(kp)
 		}
 
 		if lineOk {
@@ -234,19 +222,6 @@ func (r *Reader) ReadLine() (line string, err error) {
 			}
 			return
 		}
-
-		// r.remainder is a slice at the beginning of r.inBuf
-		// containing a partial key sequence
-		readBuf := r.inBuf[len(r.remainder):]
-		var n int
-
-		n, err = r.c.Read(readBuf)
-
-		if err != nil {
-			return
-		}
-
-		r.remainder = r.inBuf[:n+len(r.remainder)]
 	}
 
 	panic("unreachable") // for Go 1.0.
