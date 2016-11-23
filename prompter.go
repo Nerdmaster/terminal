@@ -45,10 +45,13 @@ func visualLength(s string) int {
 	return length
 }
 
+// NewPrompter returns a prompter which will read lines from r, write its
+// prompt and current line to w, and use p as the prompt string.
 func NewPrompter(r io.Reader, w io.Writer, p string) *Prompter {
 	return &Prompter{Reader: NewReader(r), Out: w, prompt: p, buf: bytes.Buffer{}, x: 1, y: 1}
 }
 
+// ReadLine delegates to the reader's ReadLine function
 func (p *Prompter) ReadLine() (string, error) {
 	line, err := p.Reader.ReadLine()
 	return line, err
@@ -101,6 +104,9 @@ func (p *Prompter) WriteAll() {
 	}
 }
 
+// WriteChanges attempts to only write to the console when something has
+// changed (line text or the cursor position).  It will also print the prompt
+// if that hasn't yet been printed.
 func (p *Prompter) WriteChanges() {
 	line, pos := p.LinePos()
 
@@ -157,21 +163,28 @@ func (p *Prompter) WriteChangesNoCursor() {
 	}
 }
 
+// printAt hard-codes the ANSI escape sequence for moving to a given screen
+// location, then prints a string
 func (p *Prompter) printAt(x, y int, s string) {
 	fmt.Fprintf(p.Out, "\x1b[%d;%dH%s", y, x, s)
 }
 
+// PrintPrompt moves to the x/y coordinates of the prompter and prints the
+// prompt string
 func (p *Prompter) PrintPrompt() {
 	p.printAt(p.x, p.y, p.prompt)
 	p.pos = 0
 }
 
+// PrintLine gets the current line and prints it to the screen just after the
+// prompter location
 func (p *Prompter) PrintLine() {
 	p.line, _ = p.LinePos()
 	p.printAt(p.inputX, p.y, p.line)
 	p.pos = len(p.line)
 }
 
+// PrintCursorMovement sends the ANSI escape sequence for moving the cursor
 func (p *Prompter) PrintCursorMovement() {
 	p.pos = p.Pos()
 	p.printAt(p.inputX+p.pos, p.y, "")

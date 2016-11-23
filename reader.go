@@ -11,6 +11,9 @@ import (
 	"unicode/utf8"
 )
 
+// DefaultMaxLineLength is the default MaxLineLength for a Reader; once a line
+// reaches this length, the Reader no longer accepts input which would increase
+// the line
 const DefaultMaxLineLength = 4096
 
 // KeyEvent is used for OnKeypress handlers to get the key and modify handler
@@ -118,8 +121,8 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 	case KeyEnd, KeyCtrlE:
 		i.MoveEnd()
 	case KeyUp:
-		ok := r.fetchPreviousHistory()
-		if !ok {
+		fetched := r.fetchPreviousHistory()
+		if !fetched {
 			return "", false
 		}
 	case KeyDown:
@@ -223,8 +226,6 @@ func (r *Reader) ReadLine() (line string, err error) {
 			return
 		}
 	}
-
-	panic("unreachable") // for Go 1.0.
 }
 
 // LinePos returns the current input line and cursor position

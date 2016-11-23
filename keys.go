@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 )
 
+// Giant list of key constants
 const (
 	KeyCtrlA = 1 + iota
 	KeyCtrlB
@@ -91,9 +92,10 @@ type KeyReader struct {
 
 	// midRune is true when we believe we have a partial rune and need to read
 	// more bytes
-	midRune   bool
+	midRune bool
 }
 
+// NewKeyReader returns a simple KeyReader set to read from i
 func NewKeyReader(i io.Reader) *KeyReader {
 	return &KeyReader{input: i}
 }

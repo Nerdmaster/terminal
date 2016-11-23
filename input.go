@@ -1,24 +1,26 @@
-// The input package just manages a very encapsulated version of a terminal
-// line so it can be synchronized for read and write without the sprawling
-// access this data had in the original terminal structure
 package terminal
 
+// Input just manages a very encapsulated version of a terminal line so it can
+// be synchronized for read and write without the sprawling access this data
+// had in the original terminal structure
 type Input struct {
 	Line []rune
 	Pos  int
 }
 
+// Set overwrites Line and Pos with l and p, respectively
 func (i *Input) Set(l []rune, p int) {
 	i.Line = l
 	i.Pos = p
 }
 
+// Clear erases the input line
 func (i *Input) Clear() {
 	i.Line = i.Line[:0]
 	i.Pos = 0
 }
 
-// addKeyToLine inserts the given key at the current position in the current
+// AddKeyToLine inserts the given key at the current position in the current
 // line.
 func (i *Input) AddKeyToLine(key rune) {
 	if len(i.Line) == cap(i.Line) {
@@ -32,6 +34,7 @@ func (i *Input) AddKeyToLine(key rune) {
 	i.Pos++
 }
 
+// String just returns the Line runes as a single string
 func (i *Input) String() string {
 	return string(i.Line)
 }
@@ -42,6 +45,7 @@ func (i *Input) Split() (string, string) {
 	return string(i.Line[:i.Pos]), string(i.Line[i.Pos:])
 }
 
+// EraseNPreviousChars deletes n characters from i.Line and updates i.Pos
 func (i *Input) EraseNPreviousChars(n int) {
 	if i.Pos == 0 || n == 0 {
 		return
@@ -56,6 +60,7 @@ func (i *Input) EraseNPreviousChars(n int) {
 	i.Line = i.Line[:len(i.Line)-n]
 }
 
+// DeleteLine removes all runes after the cursor position
 func (i *Input) DeleteLine() {
 	i.Line = i.Line[:i.Pos]
 }
@@ -150,6 +155,7 @@ func (i *Input) MoveHome() {
 	i.Pos = 0
 }
 
+// MoveEnd puts the cursor at the end of the line
 func (i *Input) MoveEnd() {
 	i.Pos = len(i.Line)
 }
