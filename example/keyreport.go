@@ -69,6 +69,10 @@ var done bool
 var r *terminal.KeyReader
 
 func printKey(kp terminal.Keypress) {
+	if kp.Key == terminal.KeyCtrlF {
+		r.ForceParse = true
+	}
+
 	if kp.Key == terminal.KeyCtrlC {
 		fmt.Print("CTRL+C pressed; terminating\r\n")
 		done = true

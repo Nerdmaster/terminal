@@ -32,6 +32,8 @@ const (
 	KeyCtrlY
 	KeyCtrlZ
 	KeyEscape
+	KeyLeftBracket  = '['
+	KeyRightBracket = ']'
 	KeyEnter     = '\r'
 	KeyBackspace = 127
 	KeyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
@@ -49,7 +51,16 @@ const (
 	KeyPgDn
 
 	KeyAlt           = 0x0100
+
+	// Single-byte keys with alt
+	KeyAltLeftBracket  = KeyAlt + KeyLeftBracket
+	KeyAltRightBracket = KeyAlt + KeyRightBracket
+
+	// Shouldn't happen, but it sort of can since alt is applied separately from
+	// the rest of parsing
 	KeyAltUnknown    = KeyAlt + KeyUnknown
+
+	// Multi-byte keys with alt
 	KeyAltUp         = KeyAlt + KeyUp
 	KeyAltDown       = KeyAlt + KeyDown
 	KeyAltLeft       = KeyAlt + KeyLeft

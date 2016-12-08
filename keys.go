@@ -21,6 +21,11 @@ type Keypress struct {
 type KeyReader struct {
 	input  io.Reader
 
+	// If ForceParse is true, the reader won't wait for certain sequences to
+	// finish, which allows for things like ESC or Alt-left-bracket to be
+	// detected properly
+	ForceParse bool
+
 	// remainder contains the remainder of any partial key sequences after
 	// a read. It aliases into inBuf.
 	remainder []byte
@@ -60,7 +65,7 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 	rest := r.remainder
 
 	// We must have bytes here; try to parse a key
-	key, i := ParseKey(rest)
+	key, i := ParseKey(rest, r.ForceParse)
 
 	// Rune errors combined with a zero-length character mean we've got a partial
 	// rune; invalid bytes get treated by utf8.DecodeRune as a 1-byte RuneError
@@ -85,8 +90,13 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 }
 
 // ParseKey tries to parse a key sequence from b. If successful, it returns the
-// key and the length in bytes of that key. Otherwise it returns utf8.RuneError, 0.
-func ParseKey(b []byte) (rune, int) {
+// key and the length in bytes of that key. Otherwise it returns
+// utf8.RuneError, 0.  If force is true, partial sequences will be returned
+// with a best-effort approach to making them meaningful, rather than flagging
+// the caller that there may be more bytes needed.  This is useful for
+// gathering special keys like escape, which otherwise hold up the key reader
+// waiting for the rest of a nonexistent sequence.
+func ParseKey(b []byte, force bool) (rune, int) {
 	var runeLen int
 	var l = len(b)
 	if l == 0 {
@@ -102,6 +112,9 @@ func ParseKey(b []byte) (rune, int) {
 
 	if b[0] != KeyEscape {
 		if !utf8.FullRune(b) {
+			if force {
+				return utf8.RuneError, len(b)
+			}
 			return utf8.RuneError, 0
 		}
 		return utf8.DecodeRune(b)
@@ -110,7 +123,10 @@ func ParseKey(b []byte) (rune, int) {
 	// From the above test we know the first key is escape.  Everything else we
 	// know how to handle is at least 3 bytes
 	if l < 3 {
-		return keyUnknown(b)
+		if force {
+			return utf8.RuneError, len(b)
+		}
+		return keyUnknown(b, force)
 	}
 
 	// Various alt keys, at least from tmux sessions, come through as 0x1b, 0x1b, ...
@@ -124,7 +140,7 @@ func ParseKey(b []byte) (rune, int) {
 
 	// If it wasn't a tmux alt key, it has to be escape followed by a left bracket
 	if b[1] != '[' {
-		return keyUnknown(b)
+		return keyUnknown(b, force)
 	}
 
 	// Local terminal alt keys are sometimes longer sequences that come through
@@ -142,6 +158,12 @@ func ParseKey(b []byte) (rune, int) {
 		l -= 3
 		runeLen = 3
 		alt = KeyAlt
+	}
+
+	// Since the buffer may have been manipulated, we re-check that we have 3+
+	// characters left
+	if l < 3 {
+		return keyUnknown(b, force)
 	}
 
 	// From here on, all known return values must be at least 3 characters
@@ -162,7 +184,7 @@ func ParseKey(b []byte) (rune, int) {
 	}
 
 	if l < 4 {
-		return keyUnknown(b)
+		return keyUnknown(b, force)
 	}
 	runeLen++
 
@@ -186,7 +208,7 @@ func ParseKey(b []byte) (rune, int) {
 	}
 
 	if l < 6 {
-		return keyUnknown(b)
+		return keyUnknown(b, force)
 	}
 	runeLen += 2
 
@@ -198,18 +220,22 @@ func ParseKey(b []byte) (rune, int) {
 		return KeyPasteStart, runeLen
 	}
 
-	return keyUnknown(b)
+	return keyUnknown(b, force)
 }
 
 // keyUnknown attempts to parse the unknown key and return its size.  If the
 // key can't be figured out, it returns a RuneError.
-func keyUnknown(b []byte) (rune, int) {
+func keyUnknown(b []byte, force bool) (rune, int) {
 	for i, c := range b[0:] {
 		// It's not clear how to find the end of a sequence without knowing them
 		// all, but it seems that [a-zA-Z~] only appears at the end of a sequence
 		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '~' {
 			return KeyUnknown, i + 1
 		}
+	}
+
+	if force {
+		return utf8.RuneError, len(b)
 	}
 
 	return utf8.RuneError, 0
