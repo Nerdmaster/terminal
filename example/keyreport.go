@@ -76,7 +76,7 @@ func printKey(kp terminal.Keypress) {
 	}
 
 	var keyString = keyText[kp.Key]
-	fmt.Printf("Key: [name: %s] [raw: %#v (%#v)] [size: %d]\r\n", keyString, string(kp.Raw), kp.Raw, kp.Size)
+	fmt.Printf("Key: %U [name: %s] [raw: %#v (%#v)] [size: %d]\r\n", kp.Key, keyString, string(kp.Raw), kp.Raw, kp.Size)
 }
 
 func main() {
