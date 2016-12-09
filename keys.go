@@ -122,8 +122,31 @@ func ParseKey(b []byte, force bool) (rune, int) {
 		return utf8.DecodeRune(b)
 	}
 
-	// From the above test we know the first key is escape.  Everything else we
-	// know how to handle is at least 3 bytes
+	// From the above test we know the first key is escape.  If that's all we
+	// have, we must be missing some bytes.
+	if l == 1 {
+		if force {
+			return KeyEscape, 1
+		}
+		return keyUnknown(b, force)
+	}
+
+	// Check for alt+valid rune
+	if b[1] != '[' && utf8.FullRune(b[1:]) {
+		var r, l = utf8.DecodeRune(b[1:])
+		return r+KeyAlt, l+1
+	}
+
+	// If length is exactly 2, and we have '[', that can be alt-left-bracket or
+	// an unfinished sequence
+	if l == 2 && b[1] == '[' {
+		if force {
+			return KeyAltLeftBracket, 2
+		}
+		return keyUnknown(b, force)
+	}
+
+	// Everything else we know how to handle is at least 3 bytes
 	if l < 3 {
 		if force {
 			return utf8.RuneError, len(b)
