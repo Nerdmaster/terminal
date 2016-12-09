@@ -7,7 +7,9 @@ import (
 )
 
 // Keypress contains the data which made up a key: our internal KeyXXX constant
-// and the bytes which were parsed to get said constant
+// and the bytes which were parsed to get said constant.  If the raw bytes need
+// to be held for any reason, they should be copied, not stored as-is, since
+// what's in here is a simple slice into the raw buffer.
 type Keypress struct {
 	Key  rune
 	Size int
@@ -29,6 +31,11 @@ type KeyReader struct {
 	remainder []byte
 	inBuf     [256]byte
 
+	// offset stores the number of bytes in inBuf to skip next time a keypress is
+	// read, allowing us to guarantee inBuf (and thus a Keypress's Raw bytes)
+	// stays the same after returning.
+	offset int
+
 	// midRune is true when we believe we have a partial rune and need to read
 	// more bytes
 	midRune bool
@@ -44,6 +51,19 @@ func NewKeyReader(i io.Reader) *KeyReader {
 // only if the "remainder" buffer has no more data, which would obviously
 // require a read.
 func (r *KeyReader) ReadKeypress() (Keypress, error) {
+	// Unshift from inBuf if we have an offset from a prior read
+	if r.offset > 0 {
+		var rest = r.remainder[r.offset:]
+		if len(rest) > 0 {
+			var n = copy(r.inBuf[:], rest)
+			r.remainder = r.inBuf[:n]
+		} else {
+			r.remainder = nil
+		}
+
+		r.offset = 0
+	}
+
 	if r.midRune || len(r.remainder) == 0 {
 		// r.remainder is a slice at the beginning of r.inBuf
 		// containing a partial key sequence
@@ -60,10 +80,8 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		r.remainder = r.inBuf[:n+len(r.remainder)]
 	}
 
-	rest := r.remainder
-
 	// We must have bytes here; try to parse a key
-	key, i := ParseKey(rest, r.ForceParse)
+	key, i := ParseKey(r.remainder, r.ForceParse)
 
 	// Rune errors combined with a zero-length character mean we've got a partial
 	// rune; invalid bytes get treated by utf8.DecodeRune as a 1-byte RuneError
@@ -71,22 +89,10 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		r.midRune = true
 	}
 
-	// TODO: fix this; it eliminates a race condition, but allocates memory on
-	// every single key read
-	var kp = Keypress{Key: key, Size: i}
-	kp.Raw = make([]byte, i)
-	copy(kp.Raw, r.remainder[:i])
+	var kp = Keypress{Key: key, Size: i, Raw: r.remainder[:i]}
 
-	// Move 'rest' forward
-	rest = rest[i:]
-
-	// If we still have bytes, adjust the buffers
-	if len(rest) > 0 {
-		n := copy(r.inBuf[:], rest)
-		r.remainder = r.inBuf[:n]
-	} else {
-		r.remainder = nil
-	}
+	// Store new offset so we can adjust the buffer next loop
+	r.offset = i
 
 	return kp, nil
 }
