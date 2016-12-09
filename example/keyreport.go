@@ -70,7 +70,8 @@ var r *terminal.KeyReader
 
 func printKey(kp terminal.Keypress) {
 	if kp.Key == terminal.KeyCtrlF {
-		r.ForceParse = true
+		r.ForceParse = !r.ForceParse
+		fmt.Printf("  [ForceParse: %#v]\r\n", r.ForceParse)
 	}
 
 	if kp.Key == terminal.KeyCtrlC {
