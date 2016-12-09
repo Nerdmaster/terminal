@@ -7,9 +7,7 @@ import (
 )
 
 // Keypress contains the data which made up a key: our internal KeyXXX constant
-// and the bytes which were parsed to get said constant.  If the raw bytes need
-// to be held for any reason, they should be copied, not stored as-is, since
-// what's in here is a simple slice into the raw buffer.
+// and the bytes which were parsed to get said constant
 type Keypress struct {
 	Key  rune
 	Size int
@@ -73,7 +71,11 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		r.midRune = true
 	}
 
-	kp := Keypress{Key: key, Size: i, Raw: r.remainder[:i]}
+	// TODO: fix this; it eliminates a race condition, but allocates memory on
+	// every single key read
+	var kp = Keypress{Key: key, Size: i}
+	kp.Raw = make([]byte, i)
+	copy(kp.Raw, r.remainder[:i])
 
 	// Move 'rest' forward
 	rest = rest[i:]
