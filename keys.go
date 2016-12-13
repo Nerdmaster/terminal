@@ -6,14 +6,44 @@ import (
 	"unicode/utf8"
 )
 
+// KeyModifier tells us what modifiers were pressed at the same time as a
+// normal key, such as CTRL, Alt, Meta, etc.
+type KeyModifier int
+
+// KeyModifier values.  We don't include Shift in here because terminals don't
+// include shift for a great deal of keys that can exist; e.g., there is no
+// "SHIFT + PgUp".  Similarly, CTRL doesn't make sense as a modifier in
+// terminals.  CTRL+A is just ASCII character 1, whereas there is no CTRL+1,
+// and CTRL+Up is its own totally separate sequence from Up.  So CTRL keys are
+// just defined on an as-needed basis.
+const (
+	ModNone KeyModifier = 0
+	ModAlt              = 1
+	ModMeta             = 2
+)
+
+func (m KeyModifier) String() string {
+	if m&ModAlt != 0 {
+		if m&ModMeta != 0 {
+			return "Meta+Alt"
+		}
+		return "Alt"
+	}
+	if m&ModMeta != 0 {
+		return "Meta"
+	}
+	return "None"
+}
+
 // Keypress contains the data which made up a key: our internal KeyXXX constant
 // and the bytes which were parsed to get said constant.  If the raw bytes need
 // to be held for any reason, they should be copied, not stored as-is, since
 // what's in here is a simple slice into the raw buffer.
 type Keypress struct {
-	Key  rune
-	Size int
-	Raw  []byte
+	Key      rune
+	Modifier KeyModifier
+	Size     int
+	Raw      []byte
 }
 
 // KeyReader is the low-level type for reading raw keypresses from a given io
