@@ -49,20 +49,6 @@ var keyText = map[rune]string{
 	terminal.KeyDelete: "KeyDelete",
 	terminal.KeyPgUp: "KeyPgUp",
 	terminal.KeyPgDn: "KeyPgDn",
-	terminal.KeyAlt: "KeyAlt",
-	terminal.KeyAltUnknown: "KeyAltUnknown",
-	terminal.KeyAltUp: "KeyAltUp",
-	terminal.KeyAltDown: "KeyAltDown",
-	terminal.KeyAltLeft: "KeyAltLeft",
-	terminal.KeyAltRight: "KeyAltRight",
-	terminal.KeyAltHome: "KeyAltHome",
-	terminal.KeyAltEnd: "KeyAltEnd",
-	terminal.KeyAltPasteStart: "KeyAltPasteStart",
-	terminal.KeyAltPasteEnd: "KeyAltPasteEnd",
-	terminal.KeyAltInsert: "KeyAltInsert",
-	terminal.KeyAltDelete: "KeyAltDelete",
-	terminal.KeyAltPgUp: "KeyAltPgUp",
-	terminal.KeyAltPgDn: "KeyAltPgDn",
 }
 
 var done bool
@@ -81,7 +67,8 @@ func printKey(kp terminal.Keypress) {
 	}
 
 	var keyString = keyText[kp.Key]
-	fmt.Printf("Key: %U [name: %s] [raw: %#v (%#v)] [size: %d]\r\n", kp.Key, keyString, string(kp.Raw), kp.Raw, kp.Size)
+	fmt.Printf("Key: %U [name: %s] [mod: %s] [raw: %#v (%#v)] [size: %d]\r\n",
+		kp.Key, keyString, kp.Modifier.String(), string(kp.Raw), kp.Raw, kp.Size)
 }
 
 func main() {

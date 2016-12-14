@@ -27,15 +27,15 @@ func onKeypress(e *terminal.KeyEvent) {
 		e.IgnoreDefaultHandlers = true
 	}
 
-	if e.Key == terminal.KeyPgUp {
+	if e.Key == terminal.KeyPgUp && e.Modifier == terminal.ModNone {
 		e.Key = 'l'
 	}
 
-	if e.Key == terminal.KeyAltPgUp {
+	if e.Key == terminal.KeyPgUp && e.Modifier == terminal.ModAlt {
 		e.Key = 'ģ'
 	}
 
-	if e.Key == terminal.KeyLeft {
+	if e.Key == terminal.KeyLeft && e.Modifier == terminal.ModNone {
 		fmt.Print(ClearScreen)
 		e.IgnoreDefaultHandlers = true
 	}
