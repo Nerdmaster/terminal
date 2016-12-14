@@ -171,7 +171,7 @@ func ParseKey(b []byte, force bool) (rune, int, KeyModifier) {
 	}
 
 	// Check for alt+valid rune
-	if b[1] != '[' && utf8.FullRune(b[1:]) {
+	if b[1] != '[' && b[1] != 0x1b && utf8.FullRune(b[1:]) {
 		var r, l = utf8.DecodeRune(b[1:])
 		return r, l + 1, ModAlt
 	}
@@ -217,9 +217,9 @@ func ParseKey(b []byte, force bool) (rune, int, KeyModifier) {
 
 	// ...and sometimes they're "\x1b[", some num, ";3~"
 	if l >= 6 && b[3] == ';' && b[4] == '3' && b[5] == '~' {
-		b = append([]byte{0x1b, '[', b[2]}, b[6:]...)
-		l -= 3
-		runeLen = 3
+		b = append([]byte{0x1b, '[', b[2]}, b[5:]...)
+		l -= 2
+		runeLen = 2
 		mod = ModAlt
 	}
 
