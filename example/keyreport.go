@@ -34,6 +34,8 @@ var keyText = map[rune]string{
 	terminal.KeyCtrlY: "KeyCtrlY",
 	terminal.KeyCtrlZ: "KeyCtrlZ",
 	terminal.KeyEscape: "KeyEscape",
+	terminal.KeyLeftBracket: "KeyLeftBracket",
+	terminal.KeyRightBracket: "KeyRightBracket",
 	terminal.KeyEnter: "KeyEnter",
 	terminal.KeyBackspace: "KeyBackspace",
 	terminal.KeyUnknown: "KeyUnknown",
