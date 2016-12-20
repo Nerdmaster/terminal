@@ -21,6 +21,14 @@ func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 		return
 	}
 
+	// Ultra-super-special-case handling for meta key
+	if l > 3 && b[0] == 0x18 && b[1] == '@' && b[2] == 's' {
+		b = b[3:]
+		l -= 3
+		rl += 3
+		mod |= ModMeta
+	}
+
 	// Super-special-case handling for alt+esc and alt+left-bracket: these two
 	// sequences are often just prefixes of other sequences, so when force is
 	// true, if we have these and nothing else, we return immediately
