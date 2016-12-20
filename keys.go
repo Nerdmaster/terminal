@@ -134,10 +134,8 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 // the caller that there may be more bytes needed.  This is useful for
 // gathering special keys like escape, which otherwise hold up the key reader
 // waiting for the rest of a nonexistent sequence.
-func ParseKey(b []byte, force bool) (rune, int, KeyModifier) {
-	var runeLen int
+func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 	var l = len(b)
-	var mod KeyModifier
 	if l == 0 {
 		return utf8.RuneError, 0, mod
 	}
@@ -197,7 +195,7 @@ func ParseKey(b []byte, force bool) (rune, int, KeyModifier) {
 	if b[1] == 0x1b {
 		b = b[1:]
 		l--
-		runeLen = 1
+		rl = 1
 		mod = ModAlt
 	}
 
@@ -211,7 +209,7 @@ func ParseKey(b []byte, force bool) (rune, int, KeyModifier) {
 	if l >= 6 && b[2] == '1' && b[3] == ';' && b[4] == '3' {
 		b = append([]byte{0x1b, '['}, b[5:]...)
 		l -= 3
-		runeLen = 3
+		rl = 3
 		mod = ModAlt
 	}
 
@@ -219,7 +217,7 @@ func ParseKey(b []byte, force bool) (rune, int, KeyModifier) {
 	if l >= 6 && b[3] == ';' && b[4] == '3' && b[5] == '~' {
 		b = append([]byte{0x1b, '[', b[2]}, b[5:]...)
 		l -= 2
-		runeLen = 2
+		rl = 2
 		mod = ModAlt
 	}
 
@@ -230,57 +228,57 @@ func ParseKey(b []byte, force bool) (rune, int, KeyModifier) {
 	}
 
 	// From here on, all known return values must be at least 3 characters
-	runeLen += 3
+	rl += 3
 	switch b[2] {
 	case 'A':
-		return KeyUp, runeLen, mod
+		return KeyUp, rl, mod
 	case 'B':
-		return KeyDown, runeLen, mod
+		return KeyDown, rl, mod
 	case 'C':
-		return KeyRight, runeLen, mod
+		return KeyRight, rl, mod
 	case 'D':
-		return KeyLeft, runeLen, mod
+		return KeyLeft, rl, mod
 	case 'H':
-		return KeyHome, runeLen, mod
+		return KeyHome, rl, mod
 	case 'F':
-		return KeyEnd, runeLen, mod
+		return KeyEnd, rl, mod
 	}
 
 	if l < 4 {
 		return keyUnknown(b, force, mod)
 	}
-	runeLen++
+	rl++
 
 	// NOTE: these appear to be escape sequences I see in tmux, but some don't
 	// actually seem to happen on a "direct" terminal!
 	if b[3] == '~' {
 		switch b[2] {
 		case '1':
-			return KeyHome, runeLen, mod
+			return KeyHome, rl, mod
 		case '2':
-			return KeyInsert, runeLen, mod
+			return KeyInsert, rl, mod
 		case '3':
-			return KeyDelete, runeLen, mod
+			return KeyDelete, rl, mod
 		case '4':
-			return KeyEnd, runeLen, mod
+			return KeyEnd, rl, mod
 		case '5':
-			return KeyPgUp, runeLen, mod
+			return KeyPgUp, rl, mod
 		case '6':
-			return KeyPgDn, runeLen, mod
+			return KeyPgDn, rl, mod
 		}
 	}
 
 	if l < 6 {
 		return keyUnknown(b, force, mod)
 	}
-	runeLen += 2
+	rl += 2
 
 	if len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
-		return KeyPasteEnd, runeLen, mod
+		return KeyPasteEnd, rl, mod
 	}
 
 	if len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {
-		return KeyPasteStart, runeLen, mod
+		return KeyPasteStart, rl, mod
 	}
 
 	return keyUnknown(b, force, mod)
