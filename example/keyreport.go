@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/Nerdmaster/terminal"
@@ -87,11 +88,12 @@ func printKey(kp terminal.Keypress) {
 }
 
 func main() {
+	// It's possible this will error if one does `echo "foo" | bin/keyreport`, so
+	// in order to test more interesting scenarios, we let errors through.
 	oldState, err := terminal.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
+	if err == nil {
+		defer terminal.Restore(int(os.Stdin.Fd()), oldState)
 	}
-	defer terminal.Restore(0, oldState)
 
 	r = terminal.NewKeyReader(os.Stdin)
 	readInput()
@@ -101,6 +103,10 @@ func readInput() {
 	for !done {
 		var kp, err = r.ReadKeypress()
 		if err != nil {
+			if err == io.EOF {
+				fmt.Println("EOF encountered; exiting")
+				return
+			}
 			fmt.Printf("ERROR: %s", err)
 			done = true
 		}
