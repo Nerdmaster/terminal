@@ -105,13 +105,22 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 		key = e.Key
 	}
 
+	if kp.Modifier == ModAlt {
+		switch key {
+		case KeyLeft:
+			i.MoveToLeftWord()
+		case KeyRight:
+			i.MoveToRightWord()
+		}
+	}
+
+	if kp.Modifier != ModNone {
+		return
+	}
+
 	switch key {
 	case KeyBackspace, KeyCtrlH:
 		i.EraseNPreviousChars(1)
-	case KeyAltLeft:
-		i.MoveToLeftWord()
-	case KeyAltRight:
-		i.MoveToRightWord()
 	case KeyLeft:
 		i.MoveLeft()
 	case KeyRight:

@@ -1,19 +1,48 @@
 package terminal
 
 import (
-	"bytes"
 	"io"
 	"unicode/utf8"
 )
+
+// KeyModifier tells us what modifiers were pressed at the same time as a
+// normal key, such as CTRL, Alt, Meta, etc.
+type KeyModifier int
+
+// KeyModifier values.  We don't include Shift in here because terminals don't
+// include shift for a great deal of keys that can exist; e.g., there is no
+// "SHIFT + PgUp".  Similarly, CTRL doesn't make sense as a modifier in
+// terminals.  CTRL+A is just ASCII character 1, whereas there is no CTRL+1,
+// and CTRL+Up is its own totally separate sequence from Up.  So CTRL keys are
+// just defined on an as-needed basis.
+const (
+	ModNone KeyModifier = 0
+	ModAlt              = 1
+	ModMeta             = 2
+)
+
+func (m KeyModifier) String() string {
+	if m&ModAlt != 0 {
+		if m&ModMeta != 0 {
+			return "Meta+Alt"
+		}
+		return "Alt"
+	}
+	if m&ModMeta != 0 {
+		return "Meta"
+	}
+	return "None"
+}
 
 // Keypress contains the data which made up a key: our internal KeyXXX constant
 // and the bytes which were parsed to get said constant.  If the raw bytes need
 // to be held for any reason, they should be copied, not stored as-is, since
 // what's in here is a simple slice into the raw buffer.
 type Keypress struct {
-	Key  rune
-	Size int
-	Raw  []byte
+	Key      rune
+	Modifier KeyModifier
+	Size     int
+	Raw      []byte
 }
 
 // KeyReader is the low-level type for reading raw keypresses from a given io
@@ -81,7 +110,7 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 	}
 
 	// We must have bytes here; try to parse a key
-	key, i := ParseKey(r.remainder, r.ForceParse)
+	key, i, mod := ParseKey(r.remainder, r.ForceParse)
 
 	// Rune errors combined with a zero-length character mean we've got a partial
 	// rune; invalid bytes get treated by utf8.DecodeRune as a 1-byte RuneError
@@ -89,187 +118,12 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		r.midRune = true
 	}
 
-	var kp = Keypress{Key: key, Size: i, Raw: r.remainder[:i]}
+	var kp = Keypress{Key: key, Size: i, Modifier: mod, Raw: r.remainder[:i]}
 
 	// Store new offset so we can adjust the buffer next loop
 	r.offset = i
 
 	return kp, nil
-}
-
-// ParseKey tries to parse a key sequence from b. If successful, it returns the
-// key and the length in bytes of that key. Otherwise it returns
-// utf8.RuneError, 0.  If force is true, partial sequences will be returned
-// with a best-effort approach to making them meaningful, rather than flagging
-// the caller that there may be more bytes needed.  This is useful for
-// gathering special keys like escape, which otherwise hold up the key reader
-// waiting for the rest of a nonexistent sequence.
-func ParseKey(b []byte, force bool) (rune, int) {
-	var runeLen int
-	var l = len(b)
-	if l == 0 {
-		return utf8.RuneError, 0
-	}
-
-	// Handle ctrl keys early (DecodeRune can do this, but it's a bit quicker to
-	// handle this first (I'm assuming so, anyway, since the original
-	// implementation did this first)
-	if b[0] < KeyEscape {
-		return rune(b[0]), 1
-	}
-
-	if b[0] != KeyEscape {
-		if !utf8.FullRune(b) {
-			if force {
-				return utf8.RuneError, len(b)
-			}
-			return utf8.RuneError, 0
-		}
-		return utf8.DecodeRune(b)
-	}
-
-	// From the above test we know the first key is escape.  If that's all we
-	// have, we must be missing some bytes.
-	if l == 1 {
-		if force {
-			return KeyEscape, 1
-		}
-		return keyUnknown(b, force)
-	}
-
-	// Check for alt+valid rune
-	if b[1] != '[' && utf8.FullRune(b[1:]) {
-		var r, l = utf8.DecodeRune(b[1:])
-		return r+KeyAlt, l+1
-	}
-
-	// If length is exactly 2, and we have '[', that can be alt-left-bracket or
-	// an unfinished sequence
-	if l == 2 && b[1] == '[' {
-		if force {
-			return KeyAltLeftBracket, 2
-		}
-		return keyUnknown(b, force)
-	}
-
-	// Everything else we know how to handle is at least 3 bytes
-	if l < 3 {
-		if force {
-			return utf8.RuneError, len(b)
-		}
-		return keyUnknown(b, force)
-	}
-
-	// Various alt keys, at least from tmux sessions, come through as 0x1b, 0x1b, ...
-	var alt rune
-	if b[1] == 0x1b {
-		b = b[1:]
-		l--
-		runeLen = 1
-		alt = KeyAlt
-	}
-
-	// If it wasn't a tmux alt key, it has to be escape followed by a left bracket
-	if b[1] != '[' {
-		return keyUnknown(b, force)
-	}
-
-	// Local terminal alt keys are sometimes longer sequences that come through
-	// as "\x1b[1;3" + some alpha
-	if l >= 6 && b[2] == '1' && b[3] == ';' && b[4] == '3' {
-		b = append([]byte{0x1b, '['}, b[5:]...)
-		l -= 3
-		runeLen = 3
-		alt = KeyAlt
-	}
-
-	// ...and sometimes they're "\x1b[", some num, ";3~"
-	if l >= 6 && b[3] == ';' && b[4] == '3' && b[5] == '~' {
-		b = append([]byte{0x1b, '[', b[2]}, b[6:]...)
-		l -= 3
-		runeLen = 3
-		alt = KeyAlt
-	}
-
-	// Since the buffer may have been manipulated, we re-check that we have 3+
-	// characters left
-	if l < 3 {
-		return keyUnknown(b, force)
-	}
-
-	// From here on, all known return values must be at least 3 characters
-	runeLen += 3
-	switch b[2] {
-	case 'A':
-		return KeyUp + alt, runeLen
-	case 'B':
-		return KeyDown + alt, runeLen
-	case 'C':
-		return KeyRight + alt, runeLen
-	case 'D':
-		return KeyLeft + alt, runeLen
-	case 'H':
-		return KeyHome + alt, runeLen
-	case 'F':
-		return KeyEnd + alt, runeLen
-	}
-
-	if l < 4 {
-		return keyUnknown(b, force)
-	}
-	runeLen++
-
-	// NOTE: these appear to be escape sequences I see in tmux, but some don't
-	// actually seem to happen on a "direct" terminal!
-	if b[3] == '~' {
-		switch b[2] {
-		case '1':
-			return KeyHome + alt, runeLen
-		case '2':
-			return KeyInsert + alt, runeLen
-		case '3':
-			return KeyDelete + alt, runeLen
-		case '4':
-			return KeyEnd + alt, runeLen
-		case '5':
-			return KeyPgUp + alt, runeLen
-		case '6':
-			return KeyPgDn + alt, runeLen
-		}
-	}
-
-	if l < 6 {
-		return keyUnknown(b, force)
-	}
-	runeLen += 2
-
-	if len(b) >= 6 && bytes.Equal(b[:6], pasteEnd) {
-		return KeyPasteEnd, runeLen
-	}
-
-	if len(b) >= 6 && bytes.Equal(b[:6], pasteStart) {
-		return KeyPasteStart, runeLen
-	}
-
-	return keyUnknown(b, force)
-}
-
-// keyUnknown attempts to parse the unknown key and return its size.  If the
-// key can't be figured out, it returns a RuneError.
-func keyUnknown(b []byte, force bool) (rune, int) {
-	for i, c := range b[0:] {
-		// It's not clear how to find the end of a sequence without knowing them
-		// all, but it seems that [a-zA-Z~] only appears at the end of a sequence
-		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '~' {
-			return KeyUnknown, i + 1
-		}
-	}
-
-	if force {
-		return utf8.RuneError, len(b)
-	}
-
-	return utf8.RuneError, 0
 }
 
 func isPrintable(key rune) bool {
