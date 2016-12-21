@@ -49,6 +49,7 @@ const (
 	KeyDelete
 	KeyPgUp
 	KeyPgDn
+	KeyPause
 	KeyF1
 	KeyF2
 	KeyF3

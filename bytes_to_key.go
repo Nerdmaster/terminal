@@ -149,6 +149,8 @@ func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 		return KeyHome, rl + 3, mod
 	case 'F':
 		return KeyEnd, rl + 3, mod
+	case 'P':
+		return KeyPause, rl + 3, mod
 	}
 
 	if l < 4 {
