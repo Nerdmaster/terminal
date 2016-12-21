@@ -251,6 +251,14 @@ func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 // keyUnknown attempts to parse the unknown key and return its size.  If the
 // key can't be figured out, it returns a RuneError.
 func keyUnknown(b []byte, rl int, force bool, mod KeyModifier) (rune, int, KeyModifier) {
+	// This is a hack, and it's guaranteed to not work in quite a few situations,
+	// but there's really not much to be done when our buffer starts getting too
+	// big.  Instead of trying to really make this awesome, we just throw away
+	// the first character and call it an error.
+	if len(b) > 8 && !force {
+		return utf8.RuneError, 1, ModNone
+	}
+
 	for i, c := range b[0:] {
 		// It's not clear how to find the end of a sequence without knowing them
 		// all, but it seems that [a-zA-Z~] only appears at the end of a sequence
