@@ -51,6 +51,18 @@ var keyText = map[rune]string{
 	terminal.KeyDelete: "KeyDelete",
 	terminal.KeyPgUp: "KeyPgUp",
 	terminal.KeyPgDn: "KeyPgDn",
+	terminal.KeyF1: "KeyF1",
+	terminal.KeyF2: "KeyF2",
+	terminal.KeyF3: "KeyF3",
+	terminal.KeyF4: "KeyF4",
+	terminal.KeyF5: "KeyF5",
+	terminal.KeyF6: "KeyF6",
+	terminal.KeyF7: "KeyF7",
+	terminal.KeyF8: "KeyF8",
+	terminal.KeyF9: "KeyF9",
+	terminal.KeyF10: "KeyF10",
+	terminal.KeyF11: "KeyF11",
+	terminal.KeyF12: "KeyF12",
 }
 
 var done bool

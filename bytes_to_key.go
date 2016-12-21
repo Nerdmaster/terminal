@@ -21,6 +21,27 @@ func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 		return
 	}
 
+	// Function keys F1-F4 are an even more ultra-super-special-case, because
+	// they can get detected as alt+letter otherwise.  ARGH.
+	if l > 2 && b[0] == 0x1b && b[1] == 'O' {
+		var b2 = b[2]
+		if l > 3 && b[2] == '1' {
+			rl++
+			b2 = b[3]
+			mod |= ModMeta
+		}
+		switch b2 {
+		case 'P':
+			return KeyF1, rl + 3, mod
+		case 'Q':
+			return KeyF2, rl + 3, mod
+		case 'R':
+			return KeyF3, rl + 3, mod
+		case 'S':
+			return KeyF4, rl + 3, mod
+		}
+	}
+
 	// Ultra-super-special-case handling for meta key
 	if l > 3 && b[0] == 0x18 && b[1] == '@' && b[2] == 's' {
 		b = b[3:]
@@ -150,6 +171,63 @@ func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 			return KeyPgUp, rl + 4, mod
 		case '6':
 			return KeyPgDn, rl + 4, mod
+		}
+	}
+
+	// "Raw terminal" function keys (VMWare non-gui debian)
+	if b[2] == '[' {
+		switch b[3] {
+		case 'A':
+			return KeyF1, rl + 4, mod
+		case 'B':
+			return KeyF2, rl + 4, mod
+		case 'C':
+			return KeyF3, rl + 4, mod
+		case 'D':
+			return KeyF4, rl + 4, mod
+		case 'E':
+			return KeyF5, rl + 4, mod
+		}
+	}
+
+	if l < 5 {
+		return keyUnknown(b, rl, force, mod)
+	}
+
+	// Meta + Function keys can be handled with a tiny bit of magic
+	if len(b) > 6 && b[4] == ';' && b[5] == '1' && b[6] == '~' {
+		b = append(b[:4], b[6:]...)
+		l -= 2
+		rl += 2
+		mod |= ModMeta
+	}
+
+	// More function keys: these are shared across terminal and non-terminal
+	// *except* F5, which is only seen this way when in a "non-raw" situation
+	if b[4] == '~' {
+		switch b[2] {
+		case '1':
+			switch b[3] {
+			case '5':
+				return KeyF5, rl + 5, mod
+			case '7':
+				return KeyF6, rl + 5, mod
+			case '8':
+				return KeyF7, rl + 5, mod
+			case '9':
+				return KeyF8, rl + 5, mod
+			}
+		case '2':
+			switch b[3] {
+			case '0':
+				return KeyF9, rl + 5, mod
+			case '1':
+				return KeyF10, rl + 5, mod
+			case '3':
+				return KeyF11, rl + 5, mod
+			case '4':
+				return KeyF12, rl + 5, mod
+			}
 		}
 	}
 

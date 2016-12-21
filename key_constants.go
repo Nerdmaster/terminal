@@ -49,8 +49,19 @@ const (
 	KeyDelete
 	KeyPgUp
 	KeyPgDn
+	KeyF1
+	KeyF2
+	KeyF3
+	KeyF4
+	KeyF5
+	KeyF6
+	KeyF7
+	KeyF8
+	KeyF9
+	KeyF10
+	KeyF11
+	KeyF12
 )
 
 var pasteStart = []byte{KeyEscape, '[', '2', '0', '0', '~'}
 var pasteEnd = []byte{KeyEscape, '[', '2', '0', '1', '~'}
-
