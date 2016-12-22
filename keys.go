@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"io"
+	"time"
 	"unicode/utf8"
 )
 
@@ -60,6 +61,10 @@ type KeyReader struct {
 	remainder []byte
 	inBuf     [256]byte
 
+	// firstRead tells us when a sequence started so we can properly "time out" a
+	// previous sequence instead of keep adding to it indefinitely
+	firstRead time.Time
+
 	// offset stores the number of bytes in inBuf to skip next time a keypress is
 	// read, allowing us to guarantee inBuf (and thus a Keypress's Raw bytes)
 	// stays the same after returning.
@@ -93,7 +98,8 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		r.offset = 0
 	}
 
-	if r.midRune || len(r.remainder) == 0 {
+	var remLen = len(r.remainder)
+	if r.midRune || remLen == 0 {
 		// r.remainder is a slice at the beginning of r.inBuf
 		// containing a partial key sequence
 		readBuf := r.inBuf[len(r.remainder):]
@@ -107,6 +113,22 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		// include what was just read
 		r.midRune = false
 		r.remainder = r.inBuf[:n+len(r.remainder)]
+
+		// If we had previous data, but it's been long enough since the first read
+		// in that sequence (>250ms), we force-parse the previous sequence and
+		// return it.  We have a one-key "lag", but this allows things like Escape
+		// + X to be handled properly and separately even without ForceParse.
+		if remLen > 0 {
+			if time.Since(r.firstRead) > time.Millisecond * 250 {
+				key, i, mod := ParseKey(r.remainder[:remLen], true)
+				var kp = Keypress{Key: key, Size: i, Modifier: mod, Raw: r.remainder[:i]}
+				r.offset = i
+				return kp, nil
+			}
+		} else {
+			// We can safely assume this is the first read
+			r.firstRead = time.Now()
+		}
 	}
 
 	// We must have bytes here; try to parse a key

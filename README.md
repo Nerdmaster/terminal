@@ -14,6 +14,12 @@ Features
   the crypto code)
 - Parses a wide variety of keys, at least on linux terminals
 - Attaches to any io.Reader interface, much like the original implementation
+- Delays between partial sequence bytes will result in an attempt to parse the
+  previous parts of the sequence; e.g., Esc + [ + D won't be treated as a left
+  arrow unless all three keys are within 250ms of each other.
+  - Since this detection can't happen until the extra keys are pressed, an app
+    still won't know that "Escape" was pressed until after the user types in
+    another key.
 - terminal.KeyReader can be used to process raw keys as they're typed instead
   of just reading lines at a time.  Optional "forced" mode can be enabled to
   read special keys as-is instead of waiting for key sequences to complete
