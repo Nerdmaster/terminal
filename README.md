@@ -10,29 +10,22 @@ applications that need more direct control or handling of weird key sequences.
 Features
 ===
 
-- Completely standalone key / line reader (i.e., doesn't depend on the rest of
-  the crypto code)
-- Parses a wide variety of keys, at least on linux terminals
-- Attaches to any io.Reader interface, much like the original implementation
-- Delays between partial sequence bytes will result in an attempt to parse the
-  previous parts of the sequence; e.g., Esc + [ + D won't be treated as a left
-  arrow unless all three keys are within 250ms of each other.
-  - Since this detection can't happen until the extra keys are pressed, an app
-    still won't know that "Escape" was pressed until after the user types in
-    another key.
-- terminal.KeyReader can be used to process raw keys as they're typed instead
-  of just reading lines at a time.  Optional "forced" mode can be enabled to
-  read special keys as-is instead of waiting for key sequences to complete
-  (e.g., reading Escape or Alt+[)
-- terminal.Reader reads lines from the terminal with optional OnKeypress
-  callback and a customizable maximum line length.  The Reader can be queried
-  for current line and cursor position, but it doesn't draw anything to the
-  screen itself.
-- terminal.Prompter wraps a Reader to allow for a statically positioned prompt.
-  It requires an io.Writer and can be called upon to write any changes to the
-  writer since the last write.  This is suitable for an input line in a
-  command-line application that needs to gather input from a static location on
-  the screen while drawing other items to the screen.
+- Completely standalone key / line reader:
+  - There's no need to include the whole crypto package
+  - Uses io.Reader instead of forcing raw terminal access, so you can listen to
+    an SSH socket, build a local binary that reads keys, or convert any stream
+    of bytes to keystrokes
+- Parses a wide variety of keys, tested in Windows and Linux, over ssh
+  connections and local terminals
+- Handles unknown sequences without user getting "stuck" (after accidentally
+  hitting Alt+[, for instance)
+- terminal.Reader reads lines from the terminal with a customizable maximum line length
+- terminal.Prompter wraps a Reader to allow for a statically positioned prompt,
+  and offers very basic drawing functionality
+- Need more direct control?  terminal.KeyReader can be used to process raw keys
+  as they're typed
+- This is first and foremost a key/line *reader*: you aren't forced to use a
+  specific approach for your output
 
 Examples
 ===
@@ -51,6 +44,11 @@ reading keys.  Both applications can be exited via Ctrl+D on a blank line.
 Note that there is some very unusual KeyEvent magic happening in the simple
 reader in order to verify some functionality that's not as easy to test
 automatically.
+
+As mentioned in "features", this package isn't coupled to a particular output
+approach.  Check out [the goterm example](example/goterm.go) to see how you can
+use [goterm](https://github.com/buger/goterm) - or any output package which
+doesn't force its input layer on you.
 
 Caveats
 ===
@@ -80,17 +78,18 @@ io.ReadCloser, which isn't how you want to handle something like an ssh
 connection that's meant to be persistent.
 
 In "forced" parse mode, alt+[ will work just fine, but a left arrow can get
-parsed as "alt+[" followed by "D" if there's a break between the two.  But in
-normal mode, a user who hits alt-[ by mistake, and tries typing numbers can
-find themselves "stuck" until they hit enough keys to overflow the maximum
-(currently 8 bytes), which allows the reader to start throwing away bytes to
-avoid breaking.
+parsed as "alt+[" followed by "D" if the reader doesn't see the D at precisely
+the same moment as the "alt+[".  But in normal mode, a user who hits alt-[ by
+mistake, and tries typing numbers can find themselves "stuck" for a moment
+until the reader sees that enough time has passed since their mistaken "alt+["
+keystroke and the "real" keys.  Or until they hit 8 bytes' worth of keys, at
+which point the key reader starts making assumptions that are likely incorrect.
 
 Low-level reading of the keyboard would solve this problem, but this package is
-meant to be able to parse input from ANYTHING readable.  Not just a local
-console, but also SSH, telnet, etc.  It may even be valuable to read keystrokes
-captured in a file (though I suspect that would break things in even more
-hilarious ways).
+meant to be as portable as possible, and able to parse input from ANYTHING
+readable.  Not just a local console, but also SSH, telnet, etc.  It may even be
+valuable to read keystrokes captured in a file (though I suspect that would
+break things in even more hilarious ways).
 
 #### Limited testing
 
