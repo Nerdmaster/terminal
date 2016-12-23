@@ -205,11 +205,20 @@ func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 	}
 
 	// More function keys: these are shared across terminal and non-terminal
-	// *except* F5, which is only seen this way when in a "non-raw" situation
+	// *except* F5, which is only seen this way when in a "non-raw" situation,
+	// and F1-F4, which are only seen with these codes when sshed in from PuTTY
 	if b[4] == '~' {
 		switch b[2] {
 		case '1':
 			switch b[3] {
+			case '1':
+				return KeyF1, rl + 5, mod
+			case '2':
+				return KeyF2, rl + 5, mod
+			case '3':
+				return KeyF3, rl + 5, mod
+			case '4':
+				return KeyF4, rl + 5, mod
 			case '5':
 				return KeyF5, rl + 5, mod
 			case '7':
