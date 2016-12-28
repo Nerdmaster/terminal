@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buger/goterm"
 	"github.com/Nerdmaster/terminal"
+	"github.com/buger/goterm"
 )
 
 var done bool
