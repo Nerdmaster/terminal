@@ -14,16 +14,18 @@ Features
 ===
 
 - Completely standalone key / line reader:
-  - There's no need to include the whole crypto package
-  - Uses io.Reader instead of forcing raw terminal access, so you can listen to
-    an SSH socket, build a local binary that reads keys, or convert any stream
-    of bytes to keystrokes
+  - Unlike the Go ssh/terminal package, this is pretty simple (no inclusion of
+    all those other crypto libraries)
+  - Unlike many all-in-one terminal packages (like termbox), this uses
+    io.Reader instead of forcing raw terminal access, so you can listen to an
+    SSH socket, read from a raw terminal, or convert any arbitrary stream of
+    raw bytes to keystrokes
+  - Unlike just about every key-reader I found, you're not tied to a specific
+    output approach; this terminal package is designed to be output-agnostic.
 - Parses a wide variety of keys, tested in Windows and Linux, over ssh
   connections and local terminals
 - Handles unknown sequences without user getting "stuck" (after accidentally
   hitting Alt+[, for instance)
-- This is first and foremost a key/line *reader*: you aren't forced to use a
-  specific approach for your output
 
 Readers
 ===
