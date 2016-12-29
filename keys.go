@@ -50,7 +50,7 @@ type Keypress struct {
 // stream, usually stdin or an ssh socket.  Stores raw bytes in a buffer so
 // that if many keys are read at once, they can still be parsed individually.
 type KeyReader struct {
-	input  io.Reader
+	input io.Reader
 
 	// If ForceParse is true, the reader won't wait for certain sequences to
 	// finish, which allows for things like ESC or Alt-left-bracket to be
@@ -120,7 +120,7 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		// return it.  We have a one-key "lag", but this allows things like Escape
 		// + X to be handled properly and separately even without ForceParse.
 		if remLen > 0 {
-			if time.Since(r.firstRead) > time.Millisecond * 250 {
+			if time.Since(r.firstRead) > time.Millisecond*250 {
 				key, i, mod := ParseKey(r.remainder[:remLen], true)
 				var kp = Keypress{Key: key, Size: i, Modifier: mod, Raw: r.remainder[:i]}
 				r.offset = i

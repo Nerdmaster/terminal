@@ -147,7 +147,7 @@ func printOutput() {
 		if lastLine != newLine {
 			toPrint := newLine
 			if len(lastLine) > len(newLine) {
-				toPrint += strings.Repeat(" ", len(lastLine) - len(newLine))
+				toPrint += strings.Repeat(" ", len(lastLine)-len(newLine))
 			}
 			printAt(15, 4, toPrint)
 		}
@@ -159,7 +159,7 @@ func printOutput() {
 			lastPos = newPos
 		}
 
-		printAt(15 + newPos, 4, "")
+		printAt(15+newPos, 4, "")
 
 		time.Sleep(time.Millisecond * 50)
 	}

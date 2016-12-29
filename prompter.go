@@ -67,9 +67,9 @@ func (p *Prompter) SetPrompt(s string) {
 // SetLocation changes the internal x and y coordinates.  If this is called
 // while a ReadLine is in progress, you won't be happy.
 func (p *Prompter) SetLocation(x, y int) {
-	p.x = x+1
+	p.x = x + 1
 	p.inputX = p.x + visualLength(p.prompt)
-	p.y = y+1
+	p.y = y + 1
 }
 
 // NeedWrite returns true if there are any pending changes to the line or
@@ -83,7 +83,7 @@ func (p *Prompter) NeedWrite() bool {
 func (p *Prompter) WriteAll() {
 	line, pos := p.LinePos()
 
-	p.printAt(p.x, p.y, p.prompt + p.line)
+	p.printAt(p.x, p.y, p.prompt+p.line)
 	p.pos = len(p.line)
 
 	if p.line != line {

@@ -34,9 +34,9 @@ const (
 	KeyEscape
 	KeyLeftBracket  = '['
 	KeyRightBracket = ']'
-	KeyEnter     = '\r'
-	KeyBackspace = 127
-	KeyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
+	KeyEnter        = '\r'
+	KeyBackspace    = 127
+	KeyUnknown      = 0xd800 /* UTF-16 surrogate area */ + iota
 	KeyUp
 	KeyDown
 	KeyLeft
