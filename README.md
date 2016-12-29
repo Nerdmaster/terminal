@@ -1,5 +1,5 @@
 Terminal
----
+===
 
 This is a highly modified mini-fork of https://github.com/golang/crypto to
 create a more standalone terminal reader that gives more power to the app, adds
@@ -11,7 +11,7 @@ applications that need more direct control or handling of weird key sequences.
 for complete API docs.
 
 Features
-===
+---
 
 - Completely standalone key / line reader:
   - Unlike the Go ssh/terminal package, this is pretty simple (no inclusion of
@@ -28,7 +28,7 @@ Features
   hitting Alt+[, for instance)
 
 Readers
-===
+---
 
 This package contains multiple ways to gather input from a user:
 
@@ -105,7 +105,7 @@ combination) spits out.  Note that this has special handling for Ctrl+C (exit
 program) and Ctrl+F (toggle "forced" parse mode).
 
 Caveats
-===
+---
 
 ### Terminals suck
 
