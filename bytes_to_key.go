@@ -6,12 +6,52 @@ import (
 )
 
 // ParseKey tries to parse a key sequence from b. If successful, it returns the
-// key and the length in bytes of that key. Otherwise it returns
-// utf8.RuneError, 0.  If force is true, partial sequences will be returned
-// with a best-effort approach to making them meaningful, rather than flagging
-// the caller that there may be more bytes needed.  This is useful for
-// gathering special keys like escape, which otherwise hold up the key reader
-// waiting for the rest of a nonexistent sequence.
+// key, the length in bytes of that key, and the modifier, if any. Otherwise it
+// returns utf8.RuneError, 0, and an undefined mod which should be ignored.
+//
+// ParseKey is the function on which all terminal's types rely, and offers the
+// lowest-level parsing in this package.  Even though it's the base function
+// used by all types, the way it handles sequences is complex enough that it is
+// generally best to use one of the key/line parsers rather than calling this
+// directly.
+//
+// When used by the various types, "force" defaults to being false.  This means
+// that we assume users are not typically typing key sequence prefixes like the
+// Escape key or Alt-left-bracket.  This eases parsing in most typical cases,
+// but it means when a user *does* press one of these keys, the Parser treats
+// it as if nothing was pressed at all (returning utf8.RuneError and a length
+// of 0).  It's then up to the caller to decide to either drop the bytes or
+// append to them with more data.
+//
+// When one of the readers (KeyReader, Reader, Prompter) gets this kind of "empty"
+// response, it will hold onto the bytes and try to append to them next time it
+// reads.  It is basically assuming the sequence is incomplete.  If the next read
+// doesn't happen soon enough, the reader will decide the sequence was in fact
+// complete, and then return the raw Escape or Alt+[, but this doesn't happen
+// until after the subsequent read, which means effectively a one-key "lag".
+//
+// This means applications really can't rely on getting raw Escape keys or
+// alt-left-bracket.  And in some cases, this is not acceptable.  Hence, the
+// "force" flag.
+//
+// If "force" is true, ParseKey will return immediately, even if the sequence is
+// nonsensical.  This makes it a lot easier to get very special keys, but when
+// listening on a network there is probably a small chance a key sequence could be
+// broken up over multiple reads, and the result will be essentially "corrupt"
+// keys.  As an example, if the left-arrow is sent, it's normally three bytes:
+// Escape followed by left-bracket followed by uppercase "D".  If the Escape is
+// read separately from the rest of the sequence, the overall result will be an
+// Escape key followed by a left-bracket followed by a "D".  If the Escape and
+// left-bracket are read separately from the "D", the result will be
+// Alt-left-bracket followed by "D".  The weird variations can get worse with
+// longer key sequences.
+//
+// Additionally, if user input is serialized to a file or something, just as a raw
+// stream of bytes, the read operation won't read more than 256 at a time.  This
+// will undoubtedly lead to all kinds of broken "keys" being parsed.
+//
+// The tl;dr is that terminals kind of suck at complex key parsing, so make
+// sure you go into it with your eyes wide open.
 func ParseKey(b []byte, force bool) (r rune, rl int, mod KeyModifier) {
 	// Default to a rune error, since we use that in so many situations
 	r = utf8.RuneError

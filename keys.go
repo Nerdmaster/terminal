@@ -47,7 +47,8 @@ type Keypress struct {
 }
 
 // KeyReader is the low-level type for reading raw keypresses from a given io
-// stream, usually stdin or an ssh socket
+// stream, usually stdin or an ssh socket.  Stores raw bytes in a buffer so
+// that if many keys are read at once, they can still be parsed individually.
 type KeyReader struct {
 	input  io.Reader
 
@@ -80,10 +81,10 @@ func NewKeyReader(i io.Reader) *KeyReader {
 	return &KeyReader{input: i}
 }
 
-// ReadKeypress reads the next key sequence, returning a Keypress object and possibly
-// an error if the input stream can't be read for some reason.  This will block
-// only if the "remainder" buffer has no more data, which would obviously
-// require a read.
+// ReadKeypress reads the next key sequence, returning a Keypress object and
+// possibly an error if the input stream can't be read for some reason.  This
+// will block if the buffer has no more data, which would obviously require a
+// direct Read call on the underlying io.Reader.
 func (r *KeyReader) ReadKeypress() (Keypress, error) {
 	// Unshift from inBuf if we have an offset from a prior read
 	if r.offset > 0 {
