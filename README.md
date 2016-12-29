@@ -7,6 +7,9 @@ more recognized key sequences, and leaves the output to the app.  For a simple
 terminal interface, use what's built into the crypto package.  This is for
 applications that need more direct control or handling of weird key sequences.
 
+[See the godoc documentation](https://godoc.org/github.com/Nerdmaster/terminal)
+for complete API docs.
+
 Features
 ===
 
@@ -19,41 +22,90 @@ Features
   connections and local terminals
 - Handles unknown sequences without user getting "stuck" (after accidentally
   hitting Alt+[, for instance)
-- terminal.Reader reads lines from the terminal with a customizable maximum line length
-- terminal.Prompter wraps a Reader to allow for a statically positioned prompt,
-  and offers very basic drawing functionality
-- Need more direct control?  terminal.KeyReader can be used to process raw keys
-  as they're typed
 - This is first and foremost a key/line *reader*: you aren't forced to use a
   specific approach for your output
 
-Examples
+Readers
 ===
 
+This package contains multiple ways to gather input from a user:
+
+### terminal.Reader
+
+`terminal.Reader` is very similar to the ssh terminal in Go's crypto package
+except that it doesn't do any output.  It's useful for gathering input from a
+user in an asynchronous way while still having niceties like a command history
+and special key handling (e.g., CTRL+U deletes everything from the beginning of
+the line to the cursor).  Specific needs can be addressed by wrapping this type
+with another type, such as the Prompter.
+
+Internally uses KeyReader for parsing keys from the io.Reader.
+
+Have a look at the [simple reader example](example/simple.go) to get an idea
+how to use this type in an application which draws random output while
+prompting the user for input and printing their keystrokes to the screen.
+
+Note that the example has some special handling for a few keys to demonstrate
+(and verify correctness of) some key interception functionality.
+
+### terminal.Prompter
+
+`terminal.Prompter` offers simple output layer on top of a terminal.Reader for
+cases where a prompt should be displayed at a fixed location in the terminal.
+It is tied to a given io.Writer and can be asked to draw changes to the input
+since it was last drawn, or redraw itself fully, including all repositioning
+ANSI codes.  Since drawing is done on command, there's no need to synchronize
+writes with other output.
+
+Internally uses KeyReader for parsing keys from the io.Reader.
+
+Have a look at the [prompter example](example/prompter.go) to get an idea how
+this type can simplify getting input from a user compared to building your code
+on top of the simpler Reader type.
+
+As mentioned in "features", this package isn't coupled to a particular output
+approach.  Check out [the goterm example](example/goterm.go) to see how you can
+use a Prompter with [goterm](https://github.com/buger/goterm) - or any output
+package which doesn't force its input layer on you.
+
+### terminal.DT
+
+`terminal.DT` is for a very simple, no-frills terminal.  It has no support for
+special keys other than backspace, and is meant to just gather printable keys
+from a user who may not have ANSI support.  It writes directly to the given
+io.Writer with no synchronizing, as it is assumed that if you wanted complex
+output to happen, you wouldn't use this.
+
+Internally uses KeyReader for parsing keys from the io.Reader.
+
+Have a loot at the ["dumb" example](example/dumb.go) to see how a DT can be
+used for an extremely simple interface.
+
+### terminal.KeyReader
+
+`terminal.KeyReader` lets you read keys as they're typed, giving extremely
+low-level control (for a terminal reader, anyway).  The optional `Force`
+variable can be set to true if you need immediate key parsing despite the
+oddities that can bring.  See the
+[`ParseKey` documentation](https://godoc.org/github.com/Nerdmaster/terminal#ParseKey)
+for an in-depth explanation of this.
+
+In normal mode (`Force` is false), special keys like Escape and
+Alt-left-bracket will not be properly parsed until another key is pressed due
+to limitations discussed in the ParseKey documentation and the Caveats section
+below.  However, users won't get "stuck", as the parser will just force-parse
+sequences if more than 250ms separates one read from the next.
+
 Take a look at the [keyreport example](example/keyreport.go) to get an idea how
-to build a raw key parser.  You can also run it directly (`go run
+to build a raw key parser using KeyReader.  You can also run it directly (`go run
 example/keyreport.go`) to see what sequence of bytes a given key (or key
 combination) spits out.  Note that this has special handling for Ctrl+C (exit
 program) and Ctrl+F (toggle "forced" parse mode).
 
-You can also look at the [simple reader example](example/simple.go) or the
-[prompter example](example/prompter.go) to get an idea how to use the simple
-Reader and Prompter types, and how to tie it all together to build a
-line-reading console application that can handle background ANSI insanity while
-reading keys.  Both applications can be exited via Ctrl+D on a blank line.
-Note that there is some very unusual KeyEvent magic happening in the simple
-reader in order to verify some functionality that's not as easy to test
-automatically.
-
-As mentioned in "features", this package isn't coupled to a particular output
-approach.  Check out [the goterm example](example/goterm.go) to see how you can
-use [goterm](https://github.com/buger/goterm) - or any output package which
-doesn't force its input layer on you.
-
 Caveats
 ===
 
-#### Terminals suck
+### Terminals suck
 
 Please note that different terminals implement different key sequences in
 hilariously different ways.  What's in this package may or may not actually
@@ -64,7 +116,7 @@ immediately after.  The left arrow is the same as hitting alt+[+D.  Try it on a
 command line!  In linux, at least, you can fake quite a lot of special keys
 because the console is so ... weird.
 
-#### io.Reader is limited
+### io.Reader is limited
 
 Go doesn't provide an easy mechanism for reading from an io.Reader in a
 "pollable" way.  It's already impossible to tell if alt+[ is really alt+[ or
@@ -91,8 +143,7 @@ readable.  Not just a local console, but also SSH, telnet, etc.  It may even be
 valuable to read keystrokes captured in a file (though I suspect that would
 break things in even more hilarious ways).
 
-#### Limited testing
-
+### Limited testing
 
 - Tested in Windows: cmd and PowerShell, Putty ssh into Ubuntu server
 - Tested in Linux: Konsole in Ubuntu VM, tmux on Debian and Ubuntu, and a raw
@@ -107,7 +158,7 @@ Windows binary won't work with built-in tools.
 If you can test out the keyreport tool in other OSes, that would be super
 helpful.
 
-#### Therefore....
+### Therefore....
 
 If you use this package for any kind of application, just make sure you
 understand the limitations.  Parsing of keys is, in many cases, done just to be
