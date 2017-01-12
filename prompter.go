@@ -23,8 +23,12 @@ type Prompter struct {
 	prompted bool
 }
 
-// visualLength returns the number of visible glyphs in a string
-func visualLength(s string) int {
+// VisualLength returns the number of visible glyphs in a string.  This can be
+// useful for getting the length of a string which has ANSI color sequences,
+// but it doesn't count "wide" glyphs differently than others, and it won't
+// handle ANSI cursor commands; e.g., it ignores "\x1b[D" rather than knowing
+// that the cursor position moved to the left.
+func VisualLength(s string) int {
 	runes := []rune(s)
 	inEscapeSeq := false
 	length := 0
@@ -61,14 +65,14 @@ func (p *Prompter) ReadLine() (string, error) {
 // ReadLine is in progress.
 func (p *Prompter) SetPrompt(s string) {
 	p.prompt = s
-	p.inputX = p.x + visualLength(p.prompt)
+	p.inputX = p.x + VisualLength(p.prompt)
 }
 
 // SetLocation changes the internal x and y coordinates.  If this is called
 // while a ReadLine is in progress, you won't be happy.
 func (p *Prompter) SetLocation(x, y int) {
 	p.x = x + 1
-	p.inputX = p.x + visualLength(p.prompt)
+	p.inputX = p.x + VisualLength(p.prompt)
 	p.y = y + 1
 }
 
