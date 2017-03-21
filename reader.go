@@ -31,8 +31,7 @@ type KeyEvent struct {
 // it.  This separation enables more complex applications where there's other
 // real-time data being rendered at the same time as the input line.
 type Reader struct {
-	// OnKeypress, if non-null, is called for each keypress with the key sent in.
-	// If it returns false, default handlers are not invoked.
+	// OnKeypress, if non-null, is called for each keypress with the key sent in
 	OnKeypress func(event *KeyEvent)
 
 	// AutoCompleteCallback, if non-null, is called for each keypress with
