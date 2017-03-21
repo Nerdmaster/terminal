@@ -26,6 +26,7 @@ Features
   connections and local terminals
 - Handles unknown sequences without user getting "stuck" (after accidentally
   hitting Alt+[, for instance)
+- OnKeypress callback for handling more than just autocomplete-style situations
 
 Readers
 ---

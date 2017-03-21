@@ -20,6 +20,7 @@ const DefaultMaxLineLength = 4096
 // state when the custom handler needs default handlers to be bypassed
 type KeyEvent struct {
 	Keypress
+	Input                 *Input
 	IgnoreDefaultHandlers bool
 }
 
@@ -31,15 +32,9 @@ type KeyEvent struct {
 // it.  This separation enables more complex applications where there's other
 // real-time data being rendered at the same time as the input line.
 type Reader struct {
-	// OnKeypress, if non-null, is called for each keypress with the key sent in
+	// OnKeypress, if non-null, is called for each keypress with the key and
+	// input line sent in
 	OnKeypress func(event *KeyEvent)
-
-	// AutoCompleteCallback, if non-null, is called for each keypress with
-	// the full input line and the current position of the cursor (in
-	// bytes, as an index into |line|). If it returns ok=false, the key
-	// press is processed normally. Otherwise it returns a replacement line
-	// and the new cursor position.
-	AutoCompleteCallback func(line string, pos int, key rune) (newLine string, newPos int, ok bool)
 
 	keyReader *KeyReader
 	m         sync.RWMutex
@@ -96,7 +91,7 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 	}
 
 	if r.OnKeypress != nil {
-		e := &KeyEvent{Keypress: kp}
+		e := &KeyEvent{Keypress: kp, Input: r.input}
 		r.OnKeypress(e)
 		if e.IgnoreDefaultHandlers {
 			return
@@ -149,15 +144,6 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 	case KeyCtrlU:
 		i.DeleteToBeginningOfLine()
 	default:
-		if r.AutoCompleteCallback != nil {
-			prefix, suffix := i.Split()
-			newLine, newPos, completeOk := r.AutoCompleteCallback(prefix+suffix, len(prefix), key)
-
-			if completeOk {
-				i.Set([]rune(newLine), utf8.RuneCount([]byte(newLine)[:newPos]))
-				return
-			}
-		}
 		if !isPrintable(key) {
 			return
 		}

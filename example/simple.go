@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Nerdmaster/terminal"
 )
@@ -22,19 +23,48 @@ var t *terminal.Reader
 var validRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*")
 
 func onKeypress(e *terminal.KeyEvent) {
-	// How can I ki amias without the  key?
+	// Ignoring a key entirely: how can I ki amias without the  key?
 	if e.Key == 'l' {
 		e.IgnoreDefaultHandlers = true
 	}
 
-	if e.Key == terminal.KeyPgUp && e.Modifier == terminal.ModNone {
-		e.Key = 'l'
+	// Tab-complete example: matches foobar and autocompletes it if:
+	// - At least two characters have been entered
+	// - All entered characters are prefix of "foobar"
+	// - Cursor is at the end of the line
+	// - Current line hasn't already printed out "foobar"
+	if e.Key == 0x09 {
+		var runes = []rune("foobar")
+		if len(e.Input.Line) < 2 || len(e.Input.Line) >= len(runes) || e.Input.Pos != len(e.Input.Line) {
+			return
+		}
+
+		for i, r := range e.Input.Line {
+			if r != runes[i] {
+				return
+			}
+		}
+
+		e.Input.Line = runes
+		e.Input.Pos = len(runes)
+		e.IgnoreDefaultHandlers = true
+		return
 	}
 
+	// Modifications to entire line based on use of Page Up key
+	if e.Key == terminal.KeyPgUp && e.Modifier == terminal.ModNone {
+		for i, r := range e.Input.Line {
+			e.Input.Line[i] = unicode.SimpleFold(r)
+		}
+		e.IgnoreDefaultHandlers = true
+	}
+
+	// Replacing a key
 	if e.Key == terminal.KeyPgUp && e.Modifier == terminal.ModAlt {
 		e.Key = 'ģ'
 	}
 
+	// Ignoring a key while still implementing some kind of behavior
 	if e.Key == terminal.KeyLeft && e.Modifier == terminal.ModNone {
 		fmt.Print(ClearScreen)
 		e.IgnoreDefaultHandlers = true
