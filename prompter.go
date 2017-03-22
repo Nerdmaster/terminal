@@ -13,14 +13,14 @@ import (
 // order to avoid unnecessary writes.
 type Prompter struct {
 	*Reader
-	prompt   string
-	Out      io.Writer
-	buf      bytes.Buffer
-	x, y     int
-	inputX   int
-	line     string
-	pos      int
-	prompted bool
+	prompt      string
+	Out         io.Writer
+	buf         bytes.Buffer
+	x, y        int
+	promptWidth int
+	line        string
+	pos         int
+	prompted    bool
 }
 
 // VisualLength returns the number of visible glyphs in a string.  This can be
@@ -52,7 +52,9 @@ func VisualLength(s string) int {
 // NewPrompter returns a prompter which will read lines from r, write its
 // prompt and current line to w, and use p as the prompt string.
 func NewPrompter(r io.Reader, w io.Writer, p string) *Prompter {
-	return &Prompter{Reader: NewReader(r), Out: w, prompt: p, buf: bytes.Buffer{}, x: 1, y: 1}
+	var prompt = &Prompter{Reader: NewReader(r), Out: w, buf: bytes.Buffer{}, x: 1, y: 1}
+	prompt.SetPrompt(p)
+	return prompt
 }
 
 // ReadLine delegates to the reader's ReadLine function
@@ -65,14 +67,13 @@ func (p *Prompter) ReadLine() (string, error) {
 // ReadLine is in progress.
 func (p *Prompter) SetPrompt(s string) {
 	p.prompt = s
-	p.inputX = p.x + VisualLength(p.prompt)
+	p.promptWidth = VisualLength(p.prompt)
 }
 
 // SetLocation changes the internal x and y coordinates.  If this is called
 // while a ReadLine is in progress, you won't be happy.
 func (p *Prompter) SetLocation(x, y int) {
 	p.x = x + 1
-	p.inputX = p.x + VisualLength(p.prompt)
 	p.y = y + 1
 }
 
@@ -87,7 +88,7 @@ func (p *Prompter) NeedWrite() bool {
 func (p *Prompter) WriteAll() {
 	line, pos := p.LinePos()
 
-	p.printAt(p.x, p.y, p.prompt+p.line)
+	p.printAt(0, p.prompt+p.line)
 	p.pos = len(p.line)
 
 	if p.line != line {
@@ -167,16 +168,16 @@ func (p *Prompter) WriteChangesNoCursor() {
 	}
 }
 
-// printAt hard-codes the ANSI escape sequence for moving to a given screen
-// location, then prints a string
-func (p *Prompter) printAt(x, y int, s string) {
-	fmt.Fprintf(p.Out, "\x1b[%d;%dH%s", y, x, s)
+// printAt moves to the position dx spaces from the start of the prompter's X
+// location and prints a string
+func (p *Prompter) printAt(dx int, s string) {
+	fmt.Fprintf(p.Out, "\x1b[%d;%dH%s", p.y, p.x+dx, s)
 }
 
 // PrintPrompt moves to the x/y coordinates of the prompter and prints the
 // prompt string
 func (p *Prompter) PrintPrompt() {
-	p.printAt(p.x, p.y, p.prompt)
+	p.printAt(0, p.prompt)
 	p.pos = 0
 }
 
@@ -184,12 +185,12 @@ func (p *Prompter) PrintPrompt() {
 // prompter location
 func (p *Prompter) PrintLine() {
 	p.line, _ = p.LinePos()
-	p.printAt(p.inputX, p.y, p.line)
+	p.printAt(p.promptWidth, p.line)
 	p.pos = len(p.line)
 }
 
 // PrintCursorMovement sends the ANSI escape sequence for moving the cursor
 func (p *Prompter) PrintCursorMovement() {
 	p.pos = p.Pos()
-	p.printAt(p.inputX+p.pos, p.y, "")
+	p.printAt(p.promptWidth+p.pos, "")
 }
