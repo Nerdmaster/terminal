@@ -23,32 +23,6 @@ type Prompter struct {
 	prompted    bool
 }
 
-// VisualLength returns the number of visible glyphs in a string.  This can be
-// useful for getting the length of a string which has ANSI color sequences,
-// but it doesn't count "wide" glyphs differently than others, and it won't
-// handle ANSI cursor commands; e.g., it ignores "\x1b[D" rather than knowing
-// that the cursor position moved to the left.
-func VisualLength(s string) int {
-	runes := []rune(s)
-	inEscapeSeq := false
-	length := 0
-
-	for _, r := range runes {
-		switch {
-		case inEscapeSeq:
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
-				inEscapeSeq = false
-			}
-		case r == '\x1b':
-			inEscapeSeq = true
-		default:
-			length++
-		}
-	}
-
-	return length
-}
-
 // NewPrompter returns a prompter which will read lines from r, write its
 // prompt and current line to w, and use p as the prompt string.
 func NewPrompter(r io.Reader, w io.Writer, p string) *Prompter {
