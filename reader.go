@@ -85,10 +85,6 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 
 	key := kp.Key
 	i := r.input
-	if r.pasteActive && key != KeyEnter {
-		i.AddKeyToLine(key)
-		return
-	}
 
 	if r.OnKeypress != nil {
 		e := &KeyEvent{Keypress: kp, Input: r.input}
@@ -97,6 +93,11 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 			return
 		}
 		key = e.Key
+	}
+
+	if r.pasteActive && key != KeyEnter {
+		i.AddKeyToLine(key)
+		return
 	}
 
 	if kp.Modifier == ModAlt {
