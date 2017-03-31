@@ -40,7 +40,7 @@ except that it doesn't do any output.  It's useful for gathering input from a
 user in an asynchronous way while still having niceties like a command history
 and special key handling (e.g., CTRL+U deletes everything from the beginning of
 the line to the cursor).  Specific needs can be addressed by wrapping this type
-with another type, such as the Prompter.
+with another type, such as the AbsPrompt.
 
 Internally uses KeyReader for parsing keys from the io.Reader.
 
@@ -51,9 +51,9 @@ prompting the user for input and printing their keystrokes to the screen.
 Note that the example has some special handling for a few keys to demonstrate
 (and verify correctness of) some key interception functionality.
 
-### terminal.Prompter
+### terminal.AbsPrompt
 
-`terminal.Prompter` offers simple output layer on top of a terminal.Reader for
+`terminal.AbsPrompt` offers simple output layer on top of a terminal.Reader for
 cases where a prompt should be displayed at a fixed location in the terminal.
 It is tied to a given io.Writer and can be asked to draw changes to the input
 since it was last drawn, or redraw itself fully, including all repositioning
@@ -62,13 +62,13 @@ writes with other output.
 
 Internally uses KeyReader for parsing keys from the io.Reader.
 
-Have a look at the [prompter example](example/prompter.go) to get an idea how
+Have a look at the [absprompt example](example/absprompt.go) to get an idea how
 this type can simplify getting input from a user compared to building your code
 on top of the simpler Reader type.
 
 As mentioned in "features", this package isn't coupled to a particular output
 approach.  Check out [the goterm example](example/goterm.go) to see how you can
-use a Prompter with [goterm](https://github.com/buger/goterm) - or any output
+use a AbsPrompt with [goterm](https://github.com/buger/goterm) - or any output
 package which doesn't force its input layer on you.
 
 ### terminal.DT

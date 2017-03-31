@@ -17,7 +17,7 @@ var done bool
 var noise [][]rune
 var nextNoise [][]rune
 var userInput string
-var p *terminal.Prompter
+var p *terminal.AbsPrompt
 
 var validRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*")
 
@@ -72,7 +72,7 @@ func main() {
 	setupNoise()
 	initializeScreen()
 
-	p = terminal.NewPrompter(os.Stdin, os.Stdout, "> ")
+	p = terminal.NewAbsPrompt(os.Stdin, os.Stdout, "> ")
 	p.SetLocation(10, 3)
 	p.MaxLineLength = 70
 	go readInput()
