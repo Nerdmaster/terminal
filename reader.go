@@ -36,6 +36,11 @@ type Reader struct {
 	// input line sent in
 	OnKeypress func(event *KeyEvent)
 
+	// AfterKeypress, if non-nil, is called after each keypress has been
+	// processed.  event should be considered read-only, as any changes will be
+	// ignored since the key has already been processed.
+	AfterKeypress func(event *KeyEvent)
+
 	keyReader *KeyReader
 	m         sync.RWMutex
 
@@ -83,18 +88,28 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	key := kp.Key
-	i := r.input
-
+	var e = &KeyEvent{Keypress: kp, Input: r.input}
 	if r.OnKeypress != nil {
-		e := &KeyEvent{Keypress: kp, Input: r.input}
 		r.OnKeypress(e)
 		if e.IgnoreDefaultHandlers {
 			return
 		}
-		key = e.Key
+		kp.Key = e.Key
 	}
 
+	line, ok = r.processKeypress(kp)
+
+	if r.AfterKeypress != nil {
+		r.AfterKeypress(e)
+	}
+	return
+}
+
+// processKeypress applies all non-overrideable logic needed for various
+// keypresses to have their desired effects
+func (r *Reader) processKeypress(kp Keypress) (line string, ok bool) {
+	var key = kp.Key
+	var i = r.input
 	if r.pasteActive && key != KeyEnter {
 		i.AddKeyToLine(key)
 		return
