@@ -21,19 +21,22 @@ func main() {
 	}
 	defer terminal.Restore(0, oldState)
 
+	// Add a key logger callback
+	var keyLogger []rune
 	var p = terminal.NewPrompt(os.Stdin, os.Stdout, "Guess a number: ")
+	p.AfterKeypress = func(e *terminal.KeyEvent) {
+		keyLogger = append(keyLogger, e.Key)
+	}
 
 	fmt.Print("I'm thinking of a number from 1-10.  Try to guess it!\r\n")
 	fmt.Print("(Type 'QUIT' at any time to exit)\r\n\r\n")
 
-	var done bool
-	for done == false {
+	for {
 		var guess, err = p.ReadLine()
 		if err != nil {
 			fmt.Print("\r\nOh no, I got an error!\r\n")
 			fmt.Printf("%s\r\n", err)
-			done = true
-			return
+			break
 		}
 
 		if strings.ToLower(guess) == "quit" {
@@ -59,4 +62,7 @@ func main() {
 
 		fmt.Printf("%d is WRONG!  Try again!\r\n", g)
 	}
+
+	fmt.Printf("Your entire list of keystrokes was %d runes long\r\n", len(keyLogger))
+	fmt.Printf("The keystrokes were %#v\r\n", string(keyLogger))
 }

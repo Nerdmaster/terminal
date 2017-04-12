@@ -27,6 +27,8 @@ Features
 - Handles unknown sequences without user getting "stuck" (after accidentally
   hitting Alt+[, for instance)
 - OnKeypress callback for handling more than just autocomplete-style situations
+- AfterKeypress callback for firing off events after the built-in processing
+  has already occurred
 
 Readers
 ---
@@ -50,6 +52,14 @@ prompting the user for input and printing their keystrokes to the screen.
 
 Note that the example has some special handling for a few keys to demonstrate
 (and verify correctness of) some key interception functionality.
+
+### terminal.Prompt
+
+`terminal.Prompt` is the closest thing to the terminal which exists in the
+crypto package.  It will draw a prompt and wait for input, handling arrow keys
+and other special keys to reposition the cursor, fetch history, etc.  This
+should be used in cases where the crypto terminal would normally be used, but
+more complex handling is necessary, such as the on/after keypress handlers.
 
 ### terminal.AbsPrompt
 
