@@ -27,13 +27,13 @@ type Prompt struct {
 
 	// moveBytes just holds onto the byte slice we use for cursor movement to
 	// avoid every cursor move requesting tiny bits of memory
-	moveBytes [10]byte
+	moveBytes []byte
 }
 
 // NewPrompt returns a prompt which will read lines from r, write its
 // prompt and current line to w, and use p as the prompt string.
 func NewPrompt(r io.Reader, w io.Writer, p string) *Prompt {
-	var prompt = &Prompt{Reader: NewReader(r), Out: w}
+	var prompt = &Prompt{Reader: NewReader(r), Out: w, moveBytes: make([]byte, 2, 16)}
 	prompt.Reader.AfterKeypress = prompt.afterKeyPress
 	prompt.SetPrompt(p)
 
@@ -104,9 +104,16 @@ func (p *Prompt) moveCursor(x int) {
 		last = 'D'
 	}
 
-	var dxString = strconv.Itoa(dx)
-	seq = append(seq, []byte(dxString)...)
-	seq = append(seq, last)
+	// For the most common cases, let's make this simpler
+	if dx == 1 {
+		seq = append(seq, last)
+	} else if dx < 10 {
+		seq = append(seq, '0'+byte(dx), last)
+	} else {
+		var dxString = strconv.Itoa(dx)
+		seq = append(seq, []byte(dxString)...)
+		seq = append(seq, last)
+	}
 	p.Out.Write(seq)
 	p.lastPos = x
 }
