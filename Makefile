@@ -2,7 +2,7 @@
 
 # This builds everything except the goterm binary since that relies on external
 # packages which we don't need for this project specifically
-all: build bin/keyreport bin/absprompt bin/simple bin/dumb
+all: build bin/keyreport bin/absprompt bin/simple bin/dumb bin/prompt
 
 SRCS = *.go
 
@@ -11,6 +11,9 @@ bin/keyreport: $(SRCS) example/keyreport.go
 
 bin/absprompt: $(SRCS) example/absprompt.go
 	go build -o bin/absprompt example/absprompt.go
+
+bin/prompt: $(SRCS) example/prompt.go
+	go build -o bin/prompt example/prompt.go
 
 bin/simple: $(SRCS) example/simple.go
 	go build -o bin/simple example/simple.go
