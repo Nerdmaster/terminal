@@ -11,7 +11,7 @@ import (
 
 var done bool
 var userInput string
-var p *terminal.Prompter
+var p *terminal.AbsPrompt
 var cmdBox, sizeBox *goterm.Box
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	sizeBox = goterm.NewBox(20, 10, 0)
 	sizeBox.Write([]byte("I AM A REALLY COOL BOX"))
 
-	p = terminal.NewPrompter(os.Stdin, os.Stdout, "Command: ")
+	p = terminal.NewAbsPrompt(os.Stdin, os.Stdout, "Command: ")
 	p.SetLocation(3, 1)
 	p.MaxLineLength = 70
 
