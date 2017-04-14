@@ -46,6 +46,8 @@ func NewPrompt(r io.Reader, w io.Writer, p string) *Prompt {
 
 // ReadLine delegates to the reader's ReadLine function
 func (p *Prompt) ReadLine() (string, error) {
+	p.lastLine = p.lastLine[:0]
+	p.lastPos = 0
 	p.Out.Write(p.prompt)
 	line, err := p.Reader.ReadLine()
 	p.Out.Write(CRLF)
@@ -61,7 +63,11 @@ func (p *Prompt) SetPrompt(s string) {
 // afterKeyPress calls Prompt's key handler to draw changes, then the user-
 // defined callback if present
 func (p *Prompt) afterKeyPress(e *KeyEvent) {
-	p.writeChanges(e)
+	// We never write changes when enter is pressed, because the line has been
+	// cleared by the Reader, and is about to be returned
+	if e.Key != KeyEnter {
+		p.writeChanges(e)
+	}
 	if p.AfterKeypress != nil {
 		p.AfterKeypress(e)
 	}
