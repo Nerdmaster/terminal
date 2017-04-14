@@ -3,9 +3,7 @@ Terminal
 
 This is a highly modified mini-fork of https://github.com/golang/crypto to
 create a more standalone terminal reader that gives more power to the app, adds
-more recognized key sequences, and leaves the output to the app.  For a simple
-terminal interface, use what's built into the crypto package.  This is for
-applications that need more direct control or handling of weird key sequences.
+more recognized key sequences, and leaves the output to the app.
 
 [See the godoc documentation](https://godoc.org/github.com/Nerdmaster/terminal)
 for complete API docs.
