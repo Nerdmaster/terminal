@@ -5,6 +5,10 @@ import (
 	"strconv"
 )
 
+// ScrollBy is the default number of runes we scroll left or right when
+// scrolling a Prompt's input
+const ScrollBy = 10
+
 // A Prompt is a wrapper around a Reader which will write a prompt, wait for
 // a user's input, and return it.  It will print whatever needs to be printed
 // on demand to an io.Writer.  The Prompt stores the Reader's prior state in
@@ -14,16 +18,33 @@ type Prompt struct {
 	prompt []byte
 	Out    io.Writer
 
-	// lastLine mirrors whatever was last printed to the console
-	lastLine []rune
+	// lastOutput mirrors whatever was last printed to the console
+	lastOutput []rune
 
-	// lastPos stores where the cursor was (relative to the beginning of the
-	// user's input area) the last time text or cursor movement was printed
-	lastPos int
+	// lastCurPos stores the previous physical cursor position on the screen.
+	// This is a screen position relative to the user's input, not the location
+	// within the full string
+	lastCurPos int
 
 	// AfterKeypress shadows the Reader variable of the same name to allow custom
 	// keypress listeners even though Prompt has to listen in order to write output
 	AfterKeypress func(event *KeyEvent)
+
+	// InputWidth should be set to the maximum size of the input area.  If this
+	// is less than the MaxLineLength, the input area will scroll left and right
+	// to allow for longer text input than the screen might otherwise allow.
+	InputWidth int
+
+	// ScrollOffset is set to the number of characters which are "off-screen";
+	// the input line displays just the characters which are after this offset.
+	// This should typically not be adjusted manually, but it may make sense to
+	// allow scrolling the input via a keyboard shortcut that doesn't alter the
+	// line or cursor position.
+	ScrollOffset int
+
+	// ScrollBy is the number of runes we "shift" when the cursor would otherwise
+	// leave the printable area; defaults to the ScrollBy package constant
+	ScrollBy int
 
 	// moveBytes just holds onto the byte slice we use for cursor movement to
 	// avoid every cursor move requesting tiny bits of memory
@@ -33,8 +54,9 @@ type Prompt struct {
 // NewPrompt returns a prompt which will read lines from r, write its
 // prompt and current line to w, and use p as the prompt string.
 func NewPrompt(r io.Reader, w io.Writer, p string) *Prompt {
-	var prompt = &Prompt{Reader: NewReader(r), Out: w, moveBytes: make([]byte, 2, 16)}
+	var prompt = &Prompt{Reader: NewReader(r), Out: w, moveBytes: make([]byte, 2, 16), ScrollBy: ScrollBy}
 	prompt.Reader.AfterKeypress = prompt.afterKeyPress
+	prompt.InputWidth = prompt.Reader.MaxLineLength
 	prompt.SetPrompt(p)
 
 	// Set up the constant moveBytes prefix
@@ -46,8 +68,9 @@ func NewPrompt(r io.Reader, w io.Writer, p string) *Prompt {
 
 // ReadLine delegates to the reader's ReadLine function
 func (p *Prompt) ReadLine() (string, error) {
-	p.lastLine = p.lastLine[:0]
-	p.lastPos = 0
+	p.ScrollOffset = 0
+	p.lastOutput = p.lastOutput[:0]
+	p.lastCurPos = 0
 	p.Out.Write(p.prompt)
 	line, err := p.Reader.ReadLine()
 	p.Out.Write(CRLF)
@@ -77,24 +100,55 @@ func (p *Prompt) afterKeyPress(e *KeyEvent) {
 // the console and the new line, attempting to draw the smallest amount of data
 // to get things back in sync
 func (p *Prompt) writeChanges(e *KeyEvent) {
-	var index = runesDiffer(p.lastLine, e.Input.Line)
+	// Check for new cursor location being off-screen
+	var cursorLoc = e.Input.Pos - p.ScrollOffset
+	var lineLen = len(e.Input.Line)
+
+	// Too far left
+	for cursorLoc < 0 {
+		p.ScrollOffset -= p.ScrollBy
+		cursorLoc += p.ScrollBy
+	}
+	if p.ScrollOffset < 0 {
+		p.ScrollOffset = 0
+	}
+
+	// Too far right
+	for cursorLoc >= p.InputWidth {
+		p.ScrollOffset += p.ScrollBy
+		cursorLoc -= p.ScrollBy
+	}
+	if p.ScrollOffset + p.InputWidth >= p.MaxLineLength {
+		p.ScrollOffset = p.MaxLineLength - p.InputWidth
+	}
+
+	var end = p.ScrollOffset + p.InputWidth
+	if end > lineLen {
+		end = lineLen
+	}
+	var visibleLine = e.Input.Line[p.ScrollOffset:end]
+
+	// Check for visible area needing a reprint
+	var index = runesDiffer(p.lastOutput, visibleLine)
 	if index >= 0 {
 		p.moveCursor(index)
-		var out = append([]rune{}, e.Input.Line[index:]...)
-		for padding := len(p.lastLine) - len(e.Input.Line); padding > 0; padding-- {
+		var out = append([]rune{}, visibleLine[index:]...)
+		for padding := len(p.lastOutput) - len(visibleLine); padding > 0; padding-- {
 			out = append(out, ' ')
 		}
-		p.lastPos += len(out)
+		p.lastCurPos += len(out)
 		p.Out.Write([]byte(string(out)))
-		p.lastLine = append(p.lastLine[:0], e.Input.Line...)
+		p.lastOutput = append(p.lastOutput[:0], visibleLine...)
 	}
-	p.moveCursor(e.Input.Pos)
+
+	// Make sure that after all the redrawing, the cursor gets back to where it should be
+	p.moveCursor(e.Input.Pos - p.ScrollOffset)
 }
 
 // moveCursor moves the cursor to the given x location (relative to the
 // beginning of the user's input area)
 func (p *Prompt) moveCursor(x int) {
-	var dx = x - p.lastPos
+	var dx = x - p.lastCurPos
 
 	if dx == 0 {
 		return
@@ -121,5 +175,5 @@ func (p *Prompt) moveCursor(x int) {
 		seq = append(seq, last)
 	}
 	p.Out.Write(seq)
-	p.lastPos = x
+	p.lastCurPos = x
 }
