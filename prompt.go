@@ -126,19 +126,28 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 	if end > lineLen {
 		end = lineLen
 	}
-	var visibleLine = e.Input.Line[p.ScrollOffset:end]
+	var outputLen = end - p.ScrollOffset
+	var visibleLine = make([]rune, outputLen)
+	for outputLen < len(p.lastOutput) {
+		visibleLine = append(visibleLine, ' ')
+		outputLen++
+	}
+	copy(visibleLine, e.Input.Line[p.ScrollOffset:end])
+	if p.ScrollOffset > 0 {
+		visibleLine[0] = '…'
+	}
+	if p.InputWidth + p.ScrollOffset < lineLen {
+		visibleLine[len(visibleLine)-1] = '…'
+	}
 
 	// Check for visible area needing a reprint
 	var index = runesDiffer(p.lastOutput, visibleLine)
 	if index >= 0 {
 		p.moveCursor(index)
-		var out = append([]rune{}, visibleLine[index:]...)
-		for padding := len(p.lastOutput) - len(visibleLine); padding > 0; padding-- {
-			out = append(out, ' ')
-		}
+		var out = visibleLine[index:]
 		p.lastCurPos += len(out)
 		p.Out.Write([]byte(string(out)))
-		p.lastOutput = append(p.lastOutput[:0], visibleLine...)
+		p.lastOutput = visibleLine
 	}
 
 	// Make sure that after all the redrawing, the cursor gets back to where it should be
