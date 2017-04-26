@@ -21,6 +21,10 @@ type Prompt struct {
 	// lastOutput mirrors whatever was last printed to the console
 	lastOutput []rune
 
+	// nextOutput is built as we determine what needs printing, and then whatever
+	// parts have changed from lastOutput to nextOutput are printed
+	nextOutput []rune
+
 	// lastCurPos stores the previous physical cursor position on the screen.
 	// This is a screen position relative to the user's input, not the location
 	// within the full string
@@ -122,32 +126,34 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 		p.ScrollOffset = p.MaxLineLength - p.InputWidth
 	}
 
+	// Figure out what we need to output next by pulling just the parts of the
+	// input runes that will be visible
 	var end = p.ScrollOffset + p.InputWidth
 	if end > lineLen {
 		end = lineLen
 	}
+	p.nextOutput = append(p.nextOutput[:0], e.Input.Line[p.ScrollOffset:end]...)
 	var outputLen = end - p.ScrollOffset
-	var visibleLine = make([]rune, outputLen)
 	for outputLen < len(p.lastOutput) {
-		visibleLine = append(visibleLine, ' ')
+		p.nextOutput = append(p.nextOutput, ' ')
 		outputLen++
 	}
-	copy(visibleLine, e.Input.Line[p.ScrollOffset:end])
 	if p.ScrollOffset > 0 {
-		visibleLine[0] = '…'
+		p.nextOutput[0] = '…'
 	}
 	if p.InputWidth + p.ScrollOffset < lineLen {
-		visibleLine[len(visibleLine)-1] = '…'
+		p.nextOutput[len(p.nextOutput)-1] = '…'
 	}
 
-	// Check for visible area needing a reprint
-	var index = runesDiffer(p.lastOutput, visibleLine)
+	// Compare last output with what we need to print next so we only redraw
+	// starting from where they differ
+	var index = runesDiffer(p.lastOutput, p.nextOutput)
 	if index >= 0 {
 		p.moveCursor(index)
-		var out = visibleLine[index:]
+		var out = p.nextOutput[index:]
 		p.lastCurPos += len(out)
 		p.Out.Write([]byte(string(out)))
-		p.lastOutput = visibleLine
+		p.lastOutput = append(p.lastOutput[:0], p.nextOutput...)
 	}
 
 	// Make sure that after all the redrawing, the cursor gets back to where it should be
