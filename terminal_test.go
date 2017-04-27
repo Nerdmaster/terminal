@@ -39,6 +39,13 @@ func Example() {
 	// user turns echoing off.
 	var echo = true
 	for {
+		// Just for fun we can demonstrate that the cursor never touches anything
+		// outside out 40-character input.  First, we print padding for the prompt
+		// ("Command: ").  Then 40 spaces, a bar, and \r to return the cursor to
+		// the beginning of the line.
+		fmt.Printf("         ")
+		fmt.Printf(strings.Repeat(" ", 40))
+		fmt.Printf("|\r")
 		var cmd, err = p.ReadLine()
 		if err != nil {
 			fmt.Printf("%s\r\n", err)
