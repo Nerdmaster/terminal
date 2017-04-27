@@ -171,6 +171,9 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 	}
 
 	// Make sure that after all the redrawing, the cursor gets back to where it should be
+	if e.Input.Pos - p.ScrollOffset == p.InputWidth {
+		e.Input.Pos--
+	}
 	p.moveCursor(e.Input.Pos - p.ScrollOffset)
 }
 
