@@ -23,8 +23,16 @@ func Example() {
 	// and writer will work.  Note that the prompt can contain ANSI colors.
 	var p = terminal.NewPrompt(os.Stdin, os.Stdout, "\x1b[34;1mCommand\x1b[0m: ")
 
-	// Make the input scroll at 40 characters
+	// This is a simple key interceptor; on CTRL-r we forcibly change the scroll to 20
+	p.OnKeypress = func(e *terminal.KeyEvent) {
+		if e.Key == terminal.KeyCtrlR {
+			p.ScrollOffset = 20
+		}
+	}
+
+	// Make the input scroll at 40 characters, maxing out at a 120-char string
 	p.InputWidth = 40
+	p.MaxLineLength = 120
 
 	// Loop forever until we get an error (typically EOF from user pressing
 	// CTRL+D) or the "quit" command is entered.  We echo each command unless the
