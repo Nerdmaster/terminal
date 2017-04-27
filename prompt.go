@@ -122,7 +122,7 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 	var lineLen = len(e.Input.Line)
 
 	// Too far left
-	for cursorLoc < 0 {
+	for cursorLoc <= 0 && p.ScrollOffset > 0 {
 		p.ScrollOffset -= p.ScrollBy
 		cursorLoc += p.ScrollBy
 	}
@@ -131,12 +131,13 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 	}
 
 	// Too far right
-	for cursorLoc >= p.InputWidth {
+	var maxScroll = p.MaxLineLength - p.InputWidth
+	for cursorLoc >= p.InputWidth-1 && p.ScrollOffset < maxScroll {
 		p.ScrollOffset += p.ScrollBy
 		cursorLoc -= p.ScrollBy
 	}
-	if p.ScrollOffset + p.InputWidth >= p.MaxLineLength {
-		p.ScrollOffset = p.MaxLineLength - p.InputWidth
+	if p.ScrollOffset >= maxScroll {
+		p.ScrollOffset = maxScroll
 	}
 
 	// Figure out what we need to output next by pulling just the parts of the
