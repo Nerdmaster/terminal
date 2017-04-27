@@ -18,6 +18,12 @@ type Prompt struct {
 	prompt []byte
 	Out    io.Writer
 
+	// LeftOverflow and RightOverflow are used to signify that the input is
+	// scrolling left or right.  They both default to the UTF ellipsis character,
+	// but can be overridden as needed.  If set to '', no overflow character will
+	// be displayed when scrolling
+	LeftOverflow, RightOverflow rune
+
 	// lastOutput mirrors whatever was last printed to the console
 	lastOutput []rune
 
@@ -58,7 +64,14 @@ type Prompt struct {
 // NewPrompt returns a prompt which will read lines from r, write its
 // prompt and current line to w, and use p as the prompt string.
 func NewPrompt(r io.Reader, w io.Writer, p string) *Prompt {
-	var prompt = &Prompt{Reader: NewReader(r), Out: w, moveBytes: make([]byte, 2, 16), ScrollBy: ScrollBy}
+	var prompt = &Prompt{
+		Reader:        NewReader(r),
+		Out:           w,
+		moveBytes:     make([]byte, 2, 16),
+		ScrollBy:      ScrollBy,
+		LeftOverflow:  '…',
+		RightOverflow: '…',
+	}
 	prompt.Reader.AfterKeypress = prompt.afterKeyPress
 	prompt.InputWidth = prompt.Reader.MaxLineLength
 	prompt.SetPrompt(p)
@@ -138,11 +151,11 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 		p.nextOutput = append(p.nextOutput, ' ')
 		outputLen++
 	}
-	if p.ScrollOffset > 0 {
-		p.nextOutput[0] = '…'
+	if p.ScrollOffset > 0 && p.LeftOverflow != 0 {
+		p.nextOutput[0] = p.LeftOverflow
 	}
-	if p.InputWidth + p.ScrollOffset < lineLen {
-		p.nextOutput[len(p.nextOutput)-1] = '…'
+	if p.InputWidth+p.ScrollOffset < lineLen && p.RightOverflow != 0 {
+		p.nextOutput[len(p.nextOutput)-1] = p.RightOverflow
 	}
 
 	// Compare last output with what we need to print next so we only redraw
