@@ -118,8 +118,8 @@ func (p *Prompt) afterKeyPress(e *KeyEvent) {
 // to get things back in sync
 func (p *Prompt) writeChanges(e *KeyEvent) {
 	// Check for new cursor location being off-screen
-	var cursorLoc = e.Input.Pos - p.ScrollOffset
-	var lineLen = len(e.Input.Line)
+	var cursorLoc = e.Line.Pos - p.ScrollOffset
+	var lineLen = len(e.Line.Text)
 
 	// Too far left
 	for cursorLoc <= 0 && p.ScrollOffset > 0 {
@@ -146,7 +146,7 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 	if end > lineLen {
 		end = lineLen
 	}
-	p.nextOutput = append(p.nextOutput[:0], e.Input.Line[p.ScrollOffset:end]...)
+	p.nextOutput = append(p.nextOutput[:0], e.Line.Text[p.ScrollOffset:end]...)
 	var outputLen = end - p.ScrollOffset
 	for outputLen < len(p.lastOutput) {
 		p.nextOutput = append(p.nextOutput, ' ')
@@ -171,10 +171,10 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 	}
 
 	// Make sure that after all the redrawing, the cursor gets back to where it should be
-	if e.Input.Pos - p.ScrollOffset == p.InputWidth {
-		e.Input.Pos--
+	if e.Line.Pos - p.ScrollOffset == p.InputWidth {
+		e.Line.Pos--
 	}
-	p.moveCursor(e.Input.Pos - p.ScrollOffset)
+	p.moveCursor(e.Line.Pos - p.ScrollOffset)
 }
 
 // moveCursor moves the cursor to the given x location (relative to the

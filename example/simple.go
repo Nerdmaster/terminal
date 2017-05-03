@@ -35,26 +35,26 @@ func onKeypress(e *terminal.KeyEvent) {
 	// - Current line hasn't already printed out "foobar"
 	if e.Key == 0x09 {
 		var runes = []rune("foobar")
-		if len(e.Input.Line) < 2 || len(e.Input.Line) >= len(runes) || e.Input.Pos != len(e.Input.Line) {
+		if len(e.Line.Text) < 2 || len(e.Line.Text) >= len(runes) || e.Line.Pos != len(e.Line.Text) {
 			return
 		}
 
-		for i, r := range e.Input.Line {
+		for i, r := range e.Line.Text {
 			if r != runes[i] {
 				return
 			}
 		}
 
-		e.Input.Line = runes
-		e.Input.Pos = len(runes)
+		e.Line.Text = runes
+		e.Line.Pos = len(runes)
 		e.IgnoreDefaultHandlers = true
 		return
 	}
 
 	// Modifications to entire line based on use of Page Up key
 	if e.Key == terminal.KeyPgUp && e.Modifier == terminal.ModNone {
-		for i, r := range e.Input.Line {
-			e.Input.Line[i] = unicode.SimpleFold(r)
+		for i, r := range e.Line.Text {
+			e.Line.Text[i] = unicode.SimpleFold(r)
 		}
 		e.IgnoreDefaultHandlers = true
 	}

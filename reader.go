@@ -20,7 +20,7 @@ const DefaultMaxLineLength = 4096
 // state when the custom handler needs default handlers to be bypassed
 type KeyEvent struct {
 	Keypress
-	Input                 *Input
+	Line                 *Line
 	IgnoreDefaultHandlers bool
 }
 
@@ -52,8 +52,8 @@ type Reader struct {
 	// like allowing up/down/left/right and other control keys)
 	MaxLineLength int
 
-	// input is the current line being entered, and the cursor position
-	input *Input
+	// line is the current line being entered, and the cursor position
+	line *Line
 
 	// pasteActive is true iff there is a bracketed paste operation in
 	// progress.
@@ -78,7 +78,7 @@ func NewReader(r io.Reader) *Reader {
 		keyReader:     NewKeyReader(r),
 		MaxLineLength: DefaultMaxLineLength,
 		historyIndex:  -1,
-		input:         &Input{},
+		line:         &Line{},
 	}
 }
 
@@ -88,7 +88,7 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	var e = &KeyEvent{Keypress: kp, Input: r.input}
+	var e = &KeyEvent{Keypress: kp, Line: r.line}
 	if r.OnKeypress != nil {
 		r.OnKeypress(e)
 		if e.IgnoreDefaultHandlers {
@@ -107,20 +107,20 @@ func (r *Reader) handleKeypress(kp Keypress) (line string, ok bool) {
 
 // processKeypress applies all non-overrideable logic needed for various
 // keypresses to have their desired effects
-func (r *Reader) processKeypress(kp Keypress) (line string, ok bool) {
+func (r *Reader) processKeypress(kp Keypress) (output string, ok bool) {
 	var key = kp.Key
-	var i = r.input
+	var line = r.line
 	if r.pasteActive && key != KeyEnter {
-		i.AddKeyToLine(key)
+		line.AddKeyToLine(key)
 		return
 	}
 
 	if kp.Modifier == ModAlt {
 		switch key {
 		case KeyLeft:
-			i.MoveToLeftWord()
+			line.MoveToLeftWord()
 		case KeyRight:
-			i.MoveToRightWord()
+			line.MoveToRightWord()
 		}
 	}
 
@@ -130,15 +130,15 @@ func (r *Reader) processKeypress(kp Keypress) (line string, ok bool) {
 
 	switch key {
 	case KeyBackspace, KeyCtrlH:
-		i.EraseNPreviousChars(1)
+		line.EraseNPreviousChars(1)
 	case KeyLeft:
-		i.MoveLeft()
+		line.MoveLeft()
 	case KeyRight:
-		i.MoveRight()
+		line.MoveRight()
 	case KeyHome, KeyCtrlA:
-		i.MoveHome()
+		line.MoveHome()
 	case KeyEnd, KeyCtrlE:
-		i.MoveEnd()
+		line.MoveEnd()
 	case KeyUp:
 		fetched := r.fetchPreviousHistory()
 		if !fetched {
@@ -147,26 +147,26 @@ func (r *Reader) processKeypress(kp Keypress) (line string, ok bool) {
 	case KeyDown:
 		r.fetchNextHistory()
 	case KeyEnter:
-		line = i.String()
+		output = line.String()
 		ok = true
-		i.Clear()
+		line.Clear()
 	case KeyCtrlW:
-		i.EraseNPreviousChars(i.CountToLeftWord())
+		line.EraseNPreviousChars(line.CountToLeftWord())
 	case KeyCtrlK:
-		i.DeleteLine()
+		line.DeleteLine()
 	case KeyCtrlD, KeyDelete:
 		// (The EOF case is handled in ReadLine)
-		i.DeleteRuneUnderCursor()
+		line.DeleteRuneUnderCursor()
 	case KeyCtrlU:
-		i.DeleteToBeginningOfLine()
+		line.DeleteToBeginningOfLine()
 	default:
 		if !isPrintable(key) {
 			return
 		}
-		if len(i.Line) == r.MaxLineLength {
+		if len(line.Text) == r.MaxLineLength {
 			return
 		}
-		i.AddKeyToLine(key)
+		line.AddKeyToLine(key)
 	}
 	return
 }
@@ -199,7 +199,7 @@ func (r *Reader) ReadLine() (line string, err error) {
 			}
 
 			r.m.RLock()
-			lineLen := len(r.input.Line)
+			lineLen := len(r.line.Text)
 			r.m.RUnlock()
 
 			if !r.pasteActive {
@@ -242,14 +242,14 @@ func (r *Reader) ReadLine() (line string, err error) {
 func (r *Reader) LinePos() (string, int) {
 	r.m.RLock()
 	defer r.m.RUnlock()
-	return r.input.String(), r.input.Pos
+	return r.line.String(), r.line.Pos
 }
 
 // Pos returns the position of the cursor
 func (r *Reader) Pos() int {
 	r.m.RLock()
 	defer r.m.RUnlock()
-	return r.input.Pos
+	return r.line.Pos
 }
 
 // fetchPreviousHistory sets the input line to the previous entry in our history
@@ -264,11 +264,11 @@ func (r *Reader) fetchPreviousHistory() bool {
 		return false
 	}
 	if r.historyIndex == -1 {
-		r.historyPending = string(r.input.Line)
+		r.historyPending = string(r.line.Text)
 	}
 	r.historyIndex++
 	runes := []rune(entry)
-	r.input.Set(runes, len(runes))
+	r.line.Set(runes, len(runes))
 	return true
 }
 
@@ -284,14 +284,14 @@ func (r *Reader) fetchNextHistory() {
 		return
 	case 0:
 		runes := []rune(r.historyPending)
-		r.input.Set(runes, len(runes))
+		r.line.Set(runes, len(runes))
 		r.historyIndex--
 	default:
 		entry, ok := r.history.NthPreviousEntry(r.historyIndex - 1)
 		if ok {
 			r.historyIndex--
 			runes := []rune(entry)
-			r.input.Set(runes, len(runes))
+			r.line.Set(runes, len(runes))
 		}
 	}
 }
