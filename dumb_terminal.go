@@ -15,10 +15,10 @@ import (
 // the next line
 var CRLF = []byte("\r\n")
 
-// DT contains the state for running a *very* basic terminal which
-// operates effectively like an old-school telnet connection: no ANSI, no
-// special keys, no history preservation, etc.  My hope here is that this is a
-// more blind-user-friendly key reader.
+// DT contains the state for running a *very* basic terminal which operates
+// effectively like an old-school telnet connection: no ANSI, no special keys,
+// no history preservation, etc.  This isn't actually useful in any way I can
+// see, but it's a decent example of lower-level key reading.
 type DT struct {
 	keyReader *KeyReader
 	w         io.Writer
