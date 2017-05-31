@@ -6,7 +6,7 @@ type Line struct {
 	Pos  int
 }
 
-// Set overwrites Line and Pos with t and p, respectively
+// Set overwrites Text and Pos with t and p, respectively
 func (l *Line) Set(t []rune, p int) {
 	l.Text = t
 	l.Pos = p
@@ -32,7 +32,7 @@ func (l *Line) AddKeyToLine(key rune) {
 	l.Pos++
 }
 
-// String just returns the Line runes as a single string
+// String just returns l.Text's runes as a single string
 func (l *Line) String() string {
 	return string(l.Text)
 }
