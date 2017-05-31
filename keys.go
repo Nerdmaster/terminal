@@ -50,7 +50,7 @@ type Keypress struct {
 // stream, usually stdin or an ssh socket.  Stores raw bytes in a buffer so
 // that if many keys are read at once, they can still be parsed individually.
 type KeyReader struct {
-	input io.Reader
+	reader io.Reader
 
 	// If ForceParse is true, the reader won't wait for certain sequences to
 	// finish, which allows for things like ESC or Alt-left-bracket to be
@@ -76,9 +76,9 @@ type KeyReader struct {
 	midRune bool
 }
 
-// NewKeyReader returns a simple KeyReader set to read from i
-func NewKeyReader(i io.Reader) *KeyReader {
-	return &KeyReader{input: i}
+// NewKeyReader returns a simple KeyReader set to read from r
+func NewKeyReader(r io.Reader) *KeyReader {
+	return &KeyReader{reader: r}
 }
 
 // ReadKeypress reads the next key sequence, returning a Keypress object and
@@ -105,7 +105,7 @@ func (r *KeyReader) ReadKeypress() (Keypress, error) {
 		// containing a partial key sequence
 		readBuf := r.inBuf[len(r.remainder):]
 
-		n, err := r.input.Read(readBuf)
+		n, err := r.reader.Read(readBuf)
 		if err != nil {
 			return Keypress{}, err
 		}
