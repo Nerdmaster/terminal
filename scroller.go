@@ -1,7 +1,5 @@
 package terminal
 
-import "log"
-
 // ScrollBy is the default value a scroller scrolls by when the cursor would
 // otherwise be outside the input area
 const ScrollBy = 10
@@ -81,11 +79,7 @@ func (s *Scroller) Filter(l *Line) ([]rune, int) {
 
 	// Too far right
 	var maxScroll = s.MaxLineLength - s.InputWidth
-	log.Println(s.InputWidth-1)
-	log.Println(s.ScrollOffset)
-	log.Println(maxScroll)
 	for cursorLoc >= s.InputWidth-1 && s.ScrollOffset < maxScroll {
-		log.Println("scrolling: too far right...")
 		s.ScrollOffset += s.ScrollBy
 		cursorLoc -= s.ScrollBy
 	}
