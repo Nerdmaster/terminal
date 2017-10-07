@@ -65,6 +65,7 @@ func (p *Prompt) ReadLine() (string, error) {
 	p.lastOutput = p.lastOutput[:0]
 	p.lastCurPos = 0
 	p.Scroller.Reset()
+	p.MaxLineLength = p.Scroller.MaxLineLength
 
 	p.Out.Write(p.prompt)
 	line, err := p.Reader.ReadLine()
