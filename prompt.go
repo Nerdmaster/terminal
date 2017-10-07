@@ -124,7 +124,12 @@ func (p *Prompt) writeChanges(e *KeyEvent) {
 // moveCursor moves the cursor to the given x location (relative to the
 // beginning of the user's input area)
 func (p *Prompt) moveCursor(x int) {
+	if x >= p.Scroller.InputWidth {
+		x = p.Scroller.InputWidth - 1
+	}
+
 	var dx = x - p.lastCurPos
+	p.lastCurPos = x
 
 	if dx == 0 {
 		return
@@ -151,5 +156,4 @@ func (p *Prompt) moveCursor(x int) {
 		seq = append(seq, last)
 	}
 	p.Out.Write(seq)
-	p.lastCurPos = x
 }
