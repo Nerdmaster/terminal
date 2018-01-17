@@ -23,7 +23,7 @@ Features
 - Parses a wide variety of keys, tested in Windows and Linux, over ssh
   connections and local terminals
 - Handles unknown sequences without user getting "stuck" (after accidentally
-  hitting Alt+[, for instance)
+  hitting Alt+left-square-bracket, for instance)
 - OnKeypress callback for handling more than just autocomplete-style situations
 - AfterKeypress callback for firing off events after the built-in processing
   has already occurred
