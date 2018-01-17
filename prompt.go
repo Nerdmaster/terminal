@@ -50,6 +50,11 @@ func NewPrompt(r io.Reader, w io.Writer, p string) *Prompt {
 
 	prompt.Scroller = NewScroller()
 
+	// Default input width is "unlimited"; line length is set to the same value
+	// to avoid scrolling
+	prompt.Scroller.InputWidth = 9999
+	prompt.Scroller.MaxLineLength = 9999
+
 	prompt.Reader.AfterKeypress = prompt.afterKeyPress
 	prompt.SetPrompt(p)
 
