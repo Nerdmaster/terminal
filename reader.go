@@ -20,7 +20,7 @@ const DefaultMaxLineLength = 4096
 // state when the custom handler needs default handlers to be bypassed
 type KeyEvent struct {
 	Keypress
-	Line                 *Line
+	Line                  *Line
 	IgnoreDefaultHandlers bool
 }
 
@@ -78,7 +78,7 @@ func NewReader(r io.Reader) *Reader {
 		keyReader:     NewKeyReader(r),
 		MaxLineLength: DefaultMaxLineLength,
 		historyIndex:  -1,
-		line:         &Line{},
+		line:          &Line{},
 	}
 }
 
