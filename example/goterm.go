@@ -1,3 +1,5 @@
+//+build goterm
+
 package main
 
 import (

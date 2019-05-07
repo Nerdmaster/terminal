@@ -30,7 +30,7 @@ bin/actually_simple: $(SRCS) example/actually_simple.go
 	go build -o bin/actually_simple example/actually_simple.go
 
 bin/goterm: $(SRCS) example/goterm.go
-	go build -o bin/goterm example/goterm.go
+	go build -tags goterm -o bin/goterm example/goterm.go
 
 build:
 	mkdir -p bin/
