@@ -30,6 +30,8 @@ func main() {
 
 	fmt.Print("I'm thinking of a number from 1-10.  Try to guess it!\r\n")
 	fmt.Print("(Type 'QUIT' at any time to exit)\r\n\r\n")
+	fmt.Print("(CTRL+X on a blank line will also quit)\r\n\r\n")
+	p.Reader.CloseKey = terminal.KeyCtrlX
 
 	for {
 		var guess, err = p.ReadLine()

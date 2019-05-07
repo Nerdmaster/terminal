@@ -52,6 +52,10 @@ type Reader struct {
 	// like allowing up/down/left/right and other control keys)
 	MaxLineLength int
 
+	// CloseKey is the key which, when used on a terminal line by itself, closes
+	// the terminal.  Defaults to CTRL + D.
+	CloseKey rune
+
 	// line is the current line being entered, and the cursor position
 	line *Line
 
@@ -77,6 +81,7 @@ func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		keyReader:     NewKeyReader(r),
 		MaxLineLength: DefaultMaxLineLength,
+		CloseKey:      KeyCtrlD,
 		historyIndex:  -1,
 		line:          &Line{},
 	}
@@ -155,7 +160,6 @@ func (r *Reader) processKeypress(kp Keypress) (output string, ok bool) {
 	case KeyCtrlK:
 		line.DeleteLine()
 	case KeyCtrlD, KeyDelete:
-		// (The EOF case is handled in ReadLine)
 		line.DeleteRuneUnderCursor()
 	case KeyCtrlU:
 		line.DeleteToBeginningOfLine()
@@ -203,7 +207,7 @@ func (r *Reader) ReadLine() (line string, err error) {
 			r.m.RUnlock()
 
 			if !r.pasteActive {
-				if key == KeyCtrlD {
+				if key == r.CloseKey {
 					if lineLen == 0 {
 						return "", io.EOF
 					}
