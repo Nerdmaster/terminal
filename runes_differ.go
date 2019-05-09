@@ -6,7 +6,7 @@ package terminal
 // the shortest one ended.
 func runesDiffer(a, b []rune) int {
 	for i, r := range a {
-		if len(b) < i+1 {
+		if len(b) <= i {
 			return i
 		}
 		if r != b[i] {
